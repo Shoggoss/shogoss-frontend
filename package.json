@@ -6,7 +6,7 @@
     "webpack-cli": "^4.10.0"
   },
   "dependencies": {
-    "shogoss-parser": "^0.0.0",
+    "shogoss-parser": "^0.0.2",
     "shogoss-core": "^0.0.2"
   }
 }
