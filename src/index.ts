@@ -1,4 +1,4 @@
-import { Board, get_initial_state, main, ResolvedGameState } from "shogoss-core";
+import { Board, ChessProfession, Entity, get_initial_state, main, ResolvedGameState } from "shogoss-core";
 import { parse } from "shogoss-parser";
 
 window.addEventListener("load", () => {
@@ -16,9 +16,19 @@ function load_history() {
         } else {
             render(state.board);
         }
-    } catch(e) {
+    } catch (e) {
         alert(e);
     }
+}
+
+function getContentHTMLFromEntity(entity: Entity): string {
+    if (entity.type === "碁") return "";
+    if (entity.type === "ス" && entity.prof !== "と") { 
+        return `<span style="font-size: 200%">${
+            { キ: "♔", ク: "♕", ル: "♖", ビ: "♗", ナ: "♘", ポ: "♙" }[entity.prof]
+        }</span>`; 
+    }
+    return entity.prof
 }
 
 function render(board: Board) {
@@ -29,7 +39,7 @@ function render(board: Board) {
             if (entity === null) {
                 continue;
             }
-            const str = entity.type === "碁" ? "" : entity.prof;
+            const str = getContentHTMLFromEntity(entity);
             ans += `<div class="${entity.side === "白" ? "white" : "black"}" style="top:${50 + i * 50}px; left:${100 + j * 50}px;">${str}</div>`
         }
     }
