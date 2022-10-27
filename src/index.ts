@@ -23,9 +23,9 @@ function load_history() {
 
 function getContentHTMLFromEntity(entity: Entity): string {
     if (entity.type === "碁") return "";
-    if (entity.type === "ス" && entity.prof !== "と") { 
+    if (entity.type === "ス" && entity.prof !== "と" && entity.prof !== "ポ") { 
         return `<span style="font-size: 200%">${
-            { キ: "♔", ク: "♕", ル: "♖", ビ: "♗", ナ: "♘", ポ: "♙" }[entity.prof]
+            { キ: "♔", ク: "♕", ル: "♖", ビ: "♗", ナ: "♘" }[entity.prof]
         }</span>`; 
     }
     return entity.prof
