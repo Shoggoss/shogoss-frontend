@@ -15,7 +15,7 @@
         }
 
         .black {
-            color: white; 
+            color: white;
             background-color: black;
             width: 40px;
             height: 40px;
@@ -24,12 +24,76 @@
             text-align: center;
             line-height: 40px;
         }
+    
+        /* 以下 fork me on github リボン用（https://codepo8.github.io/css-fork-on-github-ribbon/ で生成）*/
+        #forkongithub a {
+            background: #000;
+            color: #fff;
+            text-decoration: none;
+            font-family: arial, sans-serif;
+            text-align: center;
+            font-weight: bold;
+            padding: 5px 40px;
+            font-size: 1rem;
+            line-height: 2rem;
+            position: relative;
+            transition: 0.5s;
+        }
+
+        #forkongithub a:hover {
+            background: #c11;
+            color: #fff;
+        }
+
+        #forkongithub a::before,
+        #forkongithub a::after {
+            content: "";
+            width: 100%;
+            display: block;
+            position: absolute;
+            top: 1px;
+            left: 0;
+            height: 1px;
+            background: #fff;
+        }
+
+        #forkongithub a::after {
+            bottom: 1px;
+            top: auto;
+        }
+
+        @media screen and (min-width:800px) {
+            #forkongithub {
+                position: fixed;
+                display: block;
+                top: 0;
+                right: 0;
+                width: 200px;
+                overflow: hidden;
+                height: 200px;
+                z-index: 9999;
+            }
+
+            #forkongithub a {
+                width: 200px;
+                position: absolute;
+                top: 60px;
+                right: -60px;
+                transform: rotate(45deg);
+                -webkit-transform: rotate(45deg);
+                -ms-transform: rotate(45deg);
+                -moz-transform: rotate(45deg);
+                -o-transform: rotate(45deg);
+                box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.8);
+            }
+        }
     </style>
     <script src="bundle.js"></script>
     <title>shogoss-frontend</title>
 </head>
 
 <body>
+    <span id="forkongithub"><a target="_blank" rel="noopener noreferrer" href="https://github.com/Shoggoss">Fork me on GitHub</a></span>
     <h2>ShoGoSs 棋譜検証・解釈機</h2>
     <ul style="font-size: 80%">
         <li>ゲーム作者: <a target="_blank" rel="noopener noreferrer"  href="https://twitter.com/oga_pleconia">@oga_pleconia</a></li>
@@ -88,4 +152,4 @@
         <a target="_blank" rel="noopener noreferrer"  href="http://keserima.com/play/index.html"><img style="border: 1px solid black" src="http://keserima.com/imgs/keserima.png" height="300"></a>
     </div>
 </div>
-</body>
+</body></html>
