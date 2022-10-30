@@ -1,5 +1,5 @@
 import { Entity, get_initial_state, main, Situation } from "shogoss-core";
-import { forward_history, parse_cursored } from "./gametree";
+import { backward_history, forward_history, parse_cursored } from "./gametree";
 
 window.addEventListener("load", () => {
     render(get_initial_state("黒"));
@@ -19,12 +19,19 @@ function forward() {
 }
 
 function backward() {
-    throw new Error("not yet implemented")
+    const text = (document.getElementById("history")! as HTMLTextAreaElement).value;
+
+    const new_history = backward_history(text);
+    if (new_history) {
+        (document.getElementById("history")! as HTMLTextAreaElement).value = new_history;
+        load_history();
+    }
 }
 
 function load_history() {
     const text = (document.getElementById("history")! as HTMLTextAreaElement).value;
     (document.getElementById("forward")! as HTMLButtonElement).disabled = forward_history(text) === null;
+    (document.getElementById("backward")! as HTMLButtonElement).disabled = backward_history(text) === null;
     const moves = parse_cursored(text);
     try {
         const state = main(moves.main);
@@ -58,8 +65,8 @@ function render(situation: Situation) {
     let ans = "";
     for (let i = 0; i < 9; i++) {
         for (let j = 0; j < 9; j++) {
-            const entity = situation.board[i][j];
-            if (entity === null) {
+            const entity = situation.board[i]![j];
+            if (entity == null) {
                 continue;
             }
             const str = getContentHTMLFromEntity(entity);
