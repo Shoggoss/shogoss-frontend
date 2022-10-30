@@ -1,4 +1,4 @@
-import { Entity, GameEnd, get_initial_state, main, Move, ResolvedGameState, Situation } from "shogoss-core";
+import { can_move, Entity, GameEnd, get_initial_state, main, Move, ResolvedGameState, ShogiColumnName, ShogiRowName, Situation } from "shogoss-core";
 import { backward_history, forward_history, parse_cursored } from "./gametree";
 
 window.addEventListener("load", () => {
@@ -140,6 +140,22 @@ function render(situation: Situation, previous_situation?: Situation) {
         }
     }
 
+    if (GUI_state.selected?.type === "piece_on_board") {
+        for (let row = 0; row < 9; row++) {
+            for (let col = 0; col < 9; col++) {
+                if (can_move(situation.board, {
+                    to: [toShogiColumnName(col), toShogiRowName(row)],
+                    from: [toShogiColumnName(GUI_state.selected.col), toShogiRowName(GUI_state.selected.row)]
+                })) {
+                    const possible_destination = document.createElement("div");
+                    possible_destination.classList.add("possible_destination");
+                    possible_destination.style.cssText = `top:${50 + row * 50}px; left:${100 + col * 50}px;`
+                    ans.push(possible_destination);
+                }
+            }
+        }
+    }
+
     situation.hand_of_white.forEach((prof, index) => {
         const piece_in_hand = document.createElement("div");
         piece_in_hand.classList.add("white");
@@ -157,4 +173,12 @@ function render(situation: Situation, previous_situation?: Situation) {
     });
 
     board_dom.append(...ans);
+}
+
+function toShogiRowName(n: number): ShogiRowName {
+    return "一二三四五六七八九"[n] as ShogiRowName;
+}
+
+function toShogiColumnName(n: number): ShogiColumnName {
+    return "９８７６５４３２１"[n] as ShogiColumnName;
 }
