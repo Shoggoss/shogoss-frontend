@@ -148,7 +148,10 @@ function render(situation: Situation, previous_situation?: Situation) {
             piece_or_stone.style.cssText = `top:${50 + row * 50}px; left:${100 + col * 50}px;`;
             piece_or_stone.innerHTML = getContentHTMLFromEntity(entity);
 
-            piece_or_stone.addEventListener("click", () => select_piece_on_board([col_, row_]))
+            if (entity.type !== "碁") {
+                piece_or_stone.addEventListener("click", () => select_piece_on_board([col_, row_]))
+            }
+
             ans.push(piece_or_stone);
         }
     }
