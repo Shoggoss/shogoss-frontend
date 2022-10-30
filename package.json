@@ -11,7 +11,7 @@
     "ts-jest": "29.0.3"
   },
   "dependencies": {
-    "shogoss-core": "^0.0.5",
+    "shogoss-core": "^0.0.6",
     "shogoss-parser": "^0.0.3"
   }
 }

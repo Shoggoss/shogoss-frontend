@@ -1,4 +1,4 @@
-import { can_move, ChessProfession, Coordinate, Entity, get_initial_state, KingProfession, main, Move, ShogiColumnName, ShogiProfession, ShogiRowName, Side, Situation, throws_if_uncastlable, throws_if_unkumalable } from "shogoss-core";
+import { can_move, ChessEntity, Coordinate, Entity, entry_is_forbidden, get_initial_state, KingEntity, main, Move, ShogiColumnName, ShogiEntity, ShogiRowName, Side, Situation, throws_if_uncastlable, throws_if_unkumalable, UnpromotedShogiProfession } from "shogoss-core";
 import { backward_history, forward_history, parse_cursored, take_until_first_cursor } from "./gametree";
 
 window.addEventListener("load", () => {
@@ -194,12 +194,14 @@ function render(situation: Situation, previous_situation?: Situation) {
                     const possible_destination = document.createElement("div");
                     possible_destination.classList.add("possible_destination");
                     possible_destination.style.cssText = `top:${50 + row * 50}px; left:${100 + col * 50}px;`;
-                    possible_destination.addEventListener("click", () => { play_piece_phase(to, entity_that_moves) })
+                    possible_destination.addEventListener("click", () => { move_piece(to, entity_that_moves) })
                     ans.push(possible_destination);
                 }
             }
         }
     } else if (GUI_state.selected?.type === "piece_in_hand") {
+        const hand = GUI_state.selected.side === "白" ? situation.hand_of_white : situation.hand_of_black;
+        const selected_profession = hand[GUI_state.selected.index]!;
         for (let row = 0; row < 9; row++) {
             for (let col = 0; col < 9; col++) {
                 const row_ = toShogiRowName(row);
@@ -210,10 +212,14 @@ function render(situation: Situation, previous_situation?: Situation) {
                     continue; // 駒がある場所には打てない
                 }
 
+                if (entry_is_forbidden(selected_profession, GUI_state.selected.side, to)) {
+                    continue; // 桂馬と香車は打てる場所が限られる
+                }
+                const side = GUI_state.selected.side;
                 const possible_destination = document.createElement("div");
                 possible_destination.classList.add("possible_destination");
                 possible_destination.style.cssText = `top:${50 + row * 50}px; left:${100 + col * 50}px;`;
-                possible_destination.addEventListener("click", () => { alert("打つのは未実装") })
+                possible_destination.addEventListener("click", () => parachute(to, selected_profession, side))
                 ans.push(possible_destination);
             }
         }
@@ -258,55 +264,74 @@ function get_entity_from_coord<T>(board: Readonly<(T | null)[][]>, coord: Coordi
     return (board[row_index]?.[column_index]) ?? null;
 }
 
-type ShogiEntity = {
-    type: "しょ";
-    side: Side;
-    prof: ShogiProfession;
-    can_kumal: boolean;
-};
-
-type ChessEntity = {
-    type: "ス";
-    side: Side;
-    prof: ChessProfession;
-    never_moved: boolean;
-    subject_to_en_passant?: true | undefined;
-};
-
-type KingEntity = {
-    type: "王";
-    side: Side;
-    prof: KingProfession;
-    has_moved_only_once: boolean;
-    never_moved: boolean;
-};
-
-function play_piece_phase(to: Coordinate, entity_that_moves: ShogiEntity | ChessEntity | KingEntity) {
-    const res: { text: string, from: Coordinate | "打" } | null = (() => {
-        let text = (document.getElementById("history")! as HTMLTextAreaElement).value;
-        const moves = parse_cursored(text);
-        if (moves.unevaluated.length > 0) {
-            if (!confirm("以降の局面が破棄されます。よろしいですか？（将来的には、局面を破棄せず分岐する機能を足したいと思っています）")) {
-                GUI_state.selected = null;
-                render(GUI_state.situation);
-                return null;
-            }
-            text = take_until_first_cursor(text);
+function parachute(to: Coordinate, prof: UnpromotedShogiProfession, side: Side) {
+    let text = (document.getElementById("history")! as HTMLTextAreaElement).value;
+    const moves = parse_cursored(text);
+    if (moves.unevaluated.length > 0) {
+        if (!confirm("以降の局面が破棄されます。よろしいですか？（将来的には、局面を破棄せず分岐する機能を足したいと思っています）")) {
+            GUI_state.selected = null;
+            render(GUI_state.situation);
+            return null;
         }
-        if (GUI_state.selected?.type === "piece_on_board") {
-            const from: Coordinate = GUI_state.selected.coord;
-            return { text, from };
-        } else if (GUI_state.selected?.type === "piece_in_hand") {
-            return { text, from: "打" };
-        } else {
-            throw new Error(`駒が選択されていません`)
-        }
-    })();
-    if (res === null) {
+        text = take_until_first_cursor(text);
+    }
+
+    const from_txt = "打";
+    const full_notation = `${side === "黒" ? "▲" : "△"}${to[0]}${to[1]}${prof}${from_txt}`;
+
+    // 無理な手を指した時に落とす
+    try {
+        main_(parse_cursored(text + full_notation).main);
+    } catch (e) {
+        alert(e);
+        GUI_state.selected = null;
+        render(GUI_state.situation);
         return;
     }
-    let { text, from } = res;
-    const from_txt = from === "打" ? "打" : `${from[0]}${from[1]}`;
+
+    const loose_notation = `${side === "黒" ? "▲" : "△"}${to[0]}${to[1]}${prof}`;
+
+    function append_and_load(notation: string) {
+        text = text.trimEnd();
+        text += (text ? "　" : "") + notation;
+        (document.getElementById("history")! as HTMLTextAreaElement).value = text;
+        load_history();
+        return;
+    }
+
+    // 曖昧性が出ないときには from を書かずに通す
+    try {
+        main_(parse_cursored(text + loose_notation).main);
+    } catch (e) {
+        // 曖昧性が出た
+        append_and_load(full_notation);
+        return;
+    }
+
+    // 曖昧性が無いので from を書かずに通す
+    append_and_load(loose_notation);
+    return;
+}
+
+
+function move_piece(to: Coordinate, entity_that_moves: ShogiEntity | ChessEntity | KingEntity) {
+    if (GUI_state.selected?.type !== "piece_on_board") {
+        throw new Error("should not happen");
+    }
+
+    let text = (document.getElementById("history")! as HTMLTextAreaElement).value;
+    const moves = parse_cursored(text);
+    if (moves.unevaluated.length > 0) {
+        if (!confirm("以降の局面が破棄されます。よろしいですか？（将来的には、局面を破棄せず分岐する機能を足したいと思っています）")) {
+            GUI_state.selected = null;
+            render(GUI_state.situation);
+            return null;
+        }
+        text = take_until_first_cursor(text);
+    }
+    const from: Coordinate = GUI_state.selected.coord;
+
+    const from_txt = `${from[0]}${from[1]}`;
     const full_notation = `${entity_that_moves.side === "黒" ? "▲" : "△"}${to[0]}${to[1]}${entity_that_moves.prof}(${from_txt})`;
 
     // 無理な手を指した時に落とす
