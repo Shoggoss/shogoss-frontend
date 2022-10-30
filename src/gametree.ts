@@ -24,3 +24,36 @@ export function parse_cursored(s: string): GameTree<Move> {
 		ans.main.push(move);
 	}
 }
+
+export function forward_history(original_s: string): string | null {
+	let s = original_s;
+	// n 手分をパース
+	while (true) {
+		s = s.trimStart();
+
+		// {| に遭遇したら、
+		const till_nth = original_s.slice(0, original_s.length - s.length);
+		if (s.startsWith("{|")) {
+			// {| を読み飛ばし、
+			s = s.slice(2);
+
+			// スペースを保全して
+			const start_of_space = original_s.length - s.length;
+			s = s.trimStart();
+
+			//  1 手分をパース。1 手も残ってないなら、それはそれ以上 forward できないので null を返す
+			if (s.startsWith("}")) { return null; }
+			const { move: _, rest } = munch_one(s);
+			s = rest;
+			const end_of_space_and_move = original_s.length - s.length;
+			s = s.trimStart();
+			const end_of_space_and_move_and_space = original_s.length - s.length;
+
+			return till_nth + original_s.slice(start_of_space, end_of_space_and_move) + original_s.slice(end_of_space_and_move, end_of_space_and_move_and_space) + "{|" + original_s.slice(end_of_space_and_move_and_space);
+		} else if (s.trimStart() === "") {
+			return null; // それ以上 forward できないので null を返す
+		}
+		const { move: _, rest } = munch_one(s);
+		s = rest;
+	}
+}

@@ -1,4 +1,4 @@
-import { parse_cursored } from "./gametree";
+import { forward_history, parse_cursored } from "./gametree";
 
 test('parse_cursored', () => {
 	expect(parse_cursored(`{|▲７五ポ７四 △３四ナ１四 ▲６五ポ２五 △１一キ１五}`)).toEqual(
@@ -26,4 +26,26 @@ test('parse_cursored', () => {
 			]
 		}
 	);
+});
+
+test('forward_history', () => {
+	expect(forward_history(`{|▲７五ポ７四 
+△３四ナ１四 ▲６五ポ２五 △１一キ１五}`)).toEqual(`▲７五ポ７四 
+{|△３四ナ１四 ▲６五ポ２五 △１一キ１五}`);
+});
+
+test('forward_history', () => {
+	expect(forward_history(`▲７五ポ７四 
+{|△３四ナ１四 ▲６五ポ２五 △１一キ１五}`)).toEqual(`▲７五ポ７四 
+△３四ナ１四 {|▲６五ポ２五 △１一キ１五}`);
+});
+
+test('forward_history', () => {
+	expect(forward_history(`▲７五ポ７四 
+△３四ナ１四 ▲６五ポ２五 △１一キ１五{|}`)).toEqual(null);
+});
+
+test('forward_history', () => {
+	expect(forward_history(`▲７五ポ７四 
+△３四ナ１四 ▲６五ポ２五 △１一キ１五`)).toEqual(null);
 });

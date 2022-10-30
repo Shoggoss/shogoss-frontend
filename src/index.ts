@@ -1,15 +1,33 @@
 import { Entity, get_initial_state, main, Situation } from "shogoss-core";
-import { parse } from "shogoss-parser";
+import { forward_history, parse_cursored } from "./gametree";
 
 window.addEventListener("load", () => {
     render(get_initial_state("黒"));
     document.getElementById("load_history")!.addEventListener("click", load_history);
+    document.getElementById("forward")!.addEventListener("click", forward);
+    document.getElementById("backward")!.addEventListener("click", backward);
 });
+
+function forward() {
+    const text = (document.getElementById("history")! as HTMLTextAreaElement).value;
+
+    const new_history = forward_history(text);
+    if (new_history) {
+        (document.getElementById("history")! as HTMLTextAreaElement).value = new_history;
+        load_history();
+    }
+}
+
+function backward() {
+    throw new Error("not yet implemented")
+}
+
 function load_history() {
     const text = (document.getElementById("history")! as HTMLTextAreaElement).value;
-    const moves = parse(text);
+    (document.getElementById("forward")! as HTMLButtonElement).disabled = forward_history(text) === null;
+    const moves = parse_cursored(text);
     try {
-        const state = main(moves);
+        const state = main(moves.main);
         if (state.phase === "game_end") {
             alert(`勝者: ${state.victor}、理由: ${state.reason}`);
             render(state.final_situation);
@@ -17,7 +35,13 @@ function load_history() {
             render(state);
         }
     } catch (e) {
-        alert(e);
+        if (e === "棋譜が空です") {
+            // どっちかにしておけばいい
+            const state = get_initial_state("黒");
+            render(state);
+        } else {
+            alert(e);
+        }
     }
 }
 
