@@ -6,6 +6,7 @@ window.addEventListener("load", () => {
     document.getElementById("load_history")!.addEventListener("click", load_history);
     document.getElementById("forward")!.addEventListener("click", forward);
     document.getElementById("backward")!.addEventListener("click", backward);
+    document.getElementById("hanzi_black_white")!.addEventListener("click", load_history);
 });
 
 function forward() {
@@ -107,6 +108,14 @@ function select_piece_on_board(coord: Coordinate) {
 // previous_situation との差分には newly や newly_vacated といった CSS クラスをつけて描写
 // ただし、GUI_state.selected がある場合には、差分ではなくて選んだ駒について知りたいはずなので、newly の描写を抑制する
 function render(situation: Situation, previous_situation?: Situation) {
+    if ((document.getElementById("hanzi_black_white") as HTMLInputElement).checked) {
+        (document.getElementById("history")! as HTMLTextAreaElement).value =
+            (document.getElementById("history")! as HTMLTextAreaElement).value.replace(/[黒▲☗]/g, "黒").replace(/[白△☖]/g, "白");
+    } else {
+        (document.getElementById("history")! as HTMLTextAreaElement).value =
+            (document.getElementById("history")! as HTMLTextAreaElement).value.replace(/[黒▲☗]/g, "▲").replace(/[白△☖]/g, "△");
+    }
+
     GUI_state.situation = situation;
     const board_dom = document.getElementById("board")!;
     board_dom.innerHTML = "";
@@ -250,7 +259,7 @@ function play_piece_phase(to: Coordinate, entity_that_moves: ShogiEntity | Chess
     }
     const from: Coordinate = GUI_state.selected.coord;
 
-    const full_notation = `${entity_that_moves.side}${to[0]}${to[1]}${entity_that_moves.prof}(${from[0]}${from[1]})`;
+    const full_notation = `${entity_that_moves.side === "黒" ? "▲" : "△"}${to[0]}${to[1]}${entity_that_moves.prof}(${from[0]}${from[1]})`;
 
     // 無理な手を指した時に落とす
     try {
@@ -262,7 +271,7 @@ function play_piece_phase(to: Coordinate, entity_that_moves: ShogiEntity | Chess
         return;
     }
 
-    const loose_notation = `${entity_that_moves.side}${to[0]}${to[1]}${entity_that_moves.prof}`;
+    const loose_notation = `${entity_that_moves.side === "黒" ? "▲" : "△"}${to[0]}${to[1]}${entity_that_moves.prof}`;
 
     function append_and_load(notation: string) {
         text = text.trimEnd();
@@ -304,7 +313,7 @@ function play_piece_phase(to: Coordinate, entity_that_moves: ShogiEntity | Chess
             append_and_load(full_notation);
         }
 
-        
+
 
     }
 
