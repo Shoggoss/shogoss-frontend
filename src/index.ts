@@ -1,4 +1,4 @@
-import { can_move, Entity, GameEnd, get_initial_state, main, Move, ResolvedGameState, ShogiColumnName, ShogiRowName, Situation } from "shogoss-core";
+import { can_move, Coordinate, Entity, get_initial_state, main, Move, ShogiColumnName, ShogiRowName, Situation, throws_if_uncastlable, throws_if_unkumalable } from "shogoss-core";
 import { backward_history, forward_history, parse_cursored } from "./gametree";
 
 window.addEventListener("load", () => {
@@ -146,10 +146,30 @@ function render(situation: Situation, previous_situation?: Situation) {
     if (GUI_state.selected?.type === "piece_on_board") {
         for (let row = 0; row < 9; row++) {
             for (let col = 0; col < 9; col++) {
-                if (can_move(situation.board, {
+                const o: { to: Coordinate, from: Coordinate } = {
                     to: [toShogiColumnName(col), toShogiRowName(row)],
-                    from: [toShogiColumnName(GUI_state.selected.col), toShogiRowName(GUI_state.selected.row)]
-                })) {
+                    from: [toShogiColumnName(GUI_state.selected.col), toShogiRowName(GUI_state.selected.row)],
+                };
+
+                const is_castlable = (() => {
+                    try {
+                        throws_if_uncastlable(situation.board, o);
+                        return true;
+                    } catch (e) {
+                        return false;
+                    }
+                })();
+
+                const is_kumalable = (() => {
+                    try {
+                        throws_if_unkumalable(situation.board, o);
+                        return true;
+                    } catch (e) {
+                        return false;
+                    }
+                })();
+
+                if (can_move(situation.board, o) || is_castlable || is_kumalable) {
                     const possible_destination = document.createElement("div");
                     possible_destination.classList.add("possible_destination");
                     possible_destination.style.cssText = `top:${50 + row * 50}px; left:${100 + col * 50}px;`
