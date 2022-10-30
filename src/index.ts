@@ -92,7 +92,7 @@ function same_entity(e1: Entity, e2: Entity | undefined | null): boolean {
 
 type GUI_State = {
     situation: Situation,
-    selected: null | { type: "piece_on_board", coord: Coordinate } | { type: "piece_in_hand", index: number, side: Side }
+    selected: null | { type: "piece_on_board", coord: Coordinate } | { type: "piece_in_hand", index: number, side: Side } | { type: "stone_in_hand", side: Side };
 }
 
 const GUI_state: GUI_State = {
@@ -231,7 +231,7 @@ function render(situation: Situation, previous_situation?: Situation) {
         piece_in_hand.style.cssText = `top:${50 + index * 50}px; left: 40px;`;
         piece_in_hand.innerHTML = prof;
         piece_in_hand.addEventListener("click", () => select_piece_in_hand(index, "白"));
-        const is_selected = GUI_state.selected?.type === "piece_in_hand" && GUI_state.selected.side === "白" ? GUI_state.selected.index === index : false;
+        const is_selected = GUI_state.selected?.type === "piece_in_hand" && GUI_state.selected.side === "白" && GUI_state.selected.index === index;
         if (is_selected) {
             piece_in_hand.classList.add("selected");
         }
@@ -244,12 +244,41 @@ function render(situation: Situation, previous_situation?: Situation) {
         piece_in_hand.style.cssText = `top:${450 - index * 50}px; left: 586px;`;
         piece_in_hand.innerHTML = prof;
         piece_in_hand.addEventListener("click", () => select_piece_in_hand(index, "黒"));
-        const is_selected = GUI_state.selected?.type === "piece_in_hand" && GUI_state.selected.side === "白" ? GUI_state.selected.index === index : false;
+        const is_selected = GUI_state.selected?.type === "piece_in_hand" && GUI_state.selected.side === "黒" && GUI_state.selected.index === index;
         if (is_selected) {
             piece_in_hand.classList.add("selected");
         }
         ans.push(piece_in_hand);
     });
+
+    // 棋譜の最後が自分の動きで終わっているなら、碁石を置くオプションを表示する
+    const text = (document.getElementById("history")! as HTMLTextAreaElement).value;
+    const moves = parse_cursored(text);
+    const final_move = moves.main[moves.main.length - 1];
+
+    if (final_move && !final_move.stone_to) {
+        if (final_move.piece_phase.side === "白") {
+            const stone_in_hand = document.createElement("div");
+            stone_in_hand.classList.add("white");
+            stone_in_hand.style.cssText = `top:${50 - 1 * 50}px; left: 586px;`;
+            stone_in_hand.addEventListener("click", () => { GUI_state.selected = { type: "stone_in_hand", side: "白" }; render(GUI_state.situation) });
+            const is_selected = GUI_state.selected?.type === "stone_in_hand" && GUI_state.selected.side === "白";
+            if (is_selected) {
+                stone_in_hand.classList.add("selected");
+            }
+            ans.push(stone_in_hand);
+        } else {
+            const stone_in_hand = document.createElement("div");
+            stone_in_hand.classList.add("black");
+            stone_in_hand.style.cssText = `top:${450 + 1 * 50}px; left: 40px;`;
+            stone_in_hand.addEventListener("click", () => { GUI_state.selected = { type: "stone_in_hand", side: "黒" }; render(GUI_state.situation) });
+            const is_selected = GUI_state.selected?.type === "stone_in_hand" && GUI_state.selected.side === "黒";
+            if (is_selected) {
+                stone_in_hand.classList.add("selected");
+            }
+            ans.push(stone_in_hand);
+        }
+    }
 
     board_dom.append(...ans);
 }
@@ -273,8 +302,8 @@ function parachute(to: Coordinate, prof: UnpromotedShogiProfession, side: Side) 
             render(GUI_state.situation);
             return null;
         }
-        text = take_until_first_cursor(text);
-    }
+    } 
+    text = take_until_first_cursor(text);
 
     const from_txt = "打";
     const full_notation = `${side === "黒" ? "▲" : "△"}${to[0]}${to[1]}${prof}${from_txt}`;
@@ -291,28 +320,27 @@ function parachute(to: Coordinate, prof: UnpromotedShogiProfession, side: Side) 
 
     const loose_notation = `${side === "黒" ? "▲" : "△"}${to[0]}${to[1]}${prof}`;
 
-    function append_and_load(notation: string) {
-        text = text.trimEnd();
-        text += (text ? "　" : "") + notation;
-        (document.getElementById("history")! as HTMLTextAreaElement).value = text;
-        load_history();
-        return;
-    }
-
     // 曖昧性が出ないときには from を書かずに通す
     try {
         main_(parse_cursored(text + loose_notation).main);
     } catch (e) {
         // 曖昧性が出た
-        append_and_load(full_notation);
+        text = append_and_load(full_notation, text);
         return;
     }
 
     // 曖昧性が無いので from を書かずに通す
-    append_and_load(loose_notation);
+    text = append_and_load(loose_notation, text);
     return;
 }
 
+function append_and_load(notation: string, text: string) {
+    text = text.trimEnd();
+    text += (text ? "　" : "") + notation;
+    (document.getElementById("history")! as HTMLTextAreaElement).value = text;
+    load_history();
+    return text;
+}
 
 function move_piece(to: Coordinate, entity_that_moves: ShogiEntity | ChessEntity | KingEntity) {
     if (GUI_state.selected?.type !== "piece_on_board") {
@@ -327,8 +355,8 @@ function move_piece(to: Coordinate, entity_that_moves: ShogiEntity | ChessEntity
             render(GUI_state.situation);
             return null;
         }
-        text = take_until_first_cursor(text);
     }
+    text = take_until_first_cursor(text);
     const from: Coordinate = GUI_state.selected.coord;
 
     const from_txt = `${from[0]}${from[1]}`;
@@ -346,27 +374,21 @@ function move_piece(to: Coordinate, entity_that_moves: ShogiEntity | ChessEntity
 
     const loose_notation = `${entity_that_moves.side === "黒" ? "▲" : "△"}${to[0]}${to[1]}${entity_that_moves.prof}`;
 
-    function append_and_load(notation: string) {
-        text = text.trimEnd();
-        text += (text ? "　" : "") + notation;
-        (document.getElementById("history")! as HTMLTextAreaElement).value = text;
-        load_history();
-        return;
-    }
+
 
     // 曖昧性が出ないときには from を書かずに通す
     try {
         main_(parse_cursored(text + loose_notation).main);
     } catch (e) {
         // 曖昧性が出た
-        append_and_load(full_notation);
+        text = append_and_load(full_notation, text);
         return;
     }
 
     // 曖昧性が無いので from を書かずに通す
     // ただし、ここで「二ポの可能性は無視して曖昧性を考える」という仕様が牙をむく
     if (entity_that_moves.prof !== "ポ") {
-        append_and_load(loose_notation);
+        text = append_and_load(loose_notation, text);
         return;
     } else {
         const loose = main_(parse_cursored(text + loose_notation).main);
@@ -374,22 +396,18 @@ function move_piece(to: Coordinate, entity_that_moves: ShogiEntity | ChessEntity
         // loose で解釈すると二ポが回避できるが、full で解釈すると二ポであってゲームが終了するとき
         // これは「二ポです」を知らせるために始点明記が必要
         if (loose.phase === "resolved" && full.phase === "game_end") {
-            append_and_load(full_notation);
+            text = append_and_load(full_notation, text);
             return;
         } else if (loose.phase === "resolved" && full.phase === "resolved") {
             // 移動したポーンが即座に碁で取られて二ポが解消するパターンの場合には、「直進」との競合が発生することはない
             // したがって、この場合は直進を採用して問題ないはず
-            append_and_load(loose_notation);
+            text = append_and_load(loose_notation, text);
             return;
         } else {
             // もうよくわかんないから full notation で書いておきます
-            append_and_load(full_notation);
+            text = append_and_load(full_notation, text);
         }
-
-
-
     }
-
 }
 
 function toShogiRowName(n: number): ShogiRowName {
