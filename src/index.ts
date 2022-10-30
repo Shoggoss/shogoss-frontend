@@ -250,12 +250,64 @@ function play_piece_phase(to: Coordinate, entity_that_moves: ShogiEntity | Chess
     }
     const from: Coordinate = GUI_state.selected.coord;
 
-    // FIXME: 無理な時に落とす
-    // FIXME: 曖昧性が出ないときには from を書かずに通す
-    const move_in_text = `${entity_that_moves.side}${to[0]}${to[1]}${entity_that_moves.prof}(${from[0]}${from[1]})`;
-    text += move_in_text;
-    (document.getElementById("history")! as HTMLTextAreaElement).value = text;
-    load_history();
+    const full_notation = `${entity_that_moves.side}${to[0]}${to[1]}${entity_that_moves.prof}(${from[0]}${from[1]})`;
+
+    // 無理な手を指した時に落とす
+    try {
+        main_(parse_cursored(text + full_notation).main);
+    } catch (e) {
+        alert(e);
+        GUI_state.selected = null;
+        render(GUI_state.situation);
+        return;
+    }
+
+    const loose_notation = `${entity_that_moves.side}${to[0]}${to[1]}${entity_that_moves.prof}`;
+
+    function append_and_load(notation: string) {
+        text = text.trimEnd();
+        text += (text ? "　" : "") + notation;
+        (document.getElementById("history")! as HTMLTextAreaElement).value = text;
+        load_history();
+        return;
+    }
+
+    // 曖昧性が出ないときには from を書かずに通す
+    try {
+        main_(parse_cursored(text + loose_notation).main);
+    } catch (e) {
+        // 曖昧性が出た
+        append_and_load(full_notation);
+        return;
+    }
+
+    // 曖昧性が無いので from を書かずに通す
+    // ただし、ここで「二ポの可能性は無視して曖昧性を考える」という仕様が牙をむく
+    if (entity_that_moves.prof !== "ポ") {
+        append_and_load(loose_notation);
+        return;
+    } else {
+        const loose = main_(parse_cursored(text + loose_notation).main);
+        const full = main_(parse_cursored(text + full_notation).main);
+        // loose で解釈すると二ポが回避できるが、full で解釈すると二ポであってゲームが終了するとき
+        // これは「二ポです」を知らせるために始点明記が必要
+        if (loose.phase === "resolved" && full.phase === "game_end") {
+            append_and_load(full_notation);
+            return;
+        } else if (loose.phase === "resolved" && full.phase === "resolved") {
+            // 移動したポーンが即座に碁で取られて二ポが解消するパターンの場合には、「直進」との競合が発生することはない
+            // したがって、この場合は直進を採用して問題ないはず
+            append_and_load(loose_notation);
+            return;
+        } else {
+            // もうよくわかんないから full notation で書いておきます
+            append_and_load(full_notation);
+        }
+
+        
+
+    }
+
 }
 
 function toShogiRowName(n: number): ShogiRowName {
