@@ -3,6 +3,28 @@ import { munch_one } from "shogoss-parser";
 
 type GameTree<T> = { main: T[], unevaluated: T[] };
 
+type Token = { type: "spaces", str: string } | { type: "move", str: string, move: Move } | { type: "{|", str: "{|" } | { type: "}", str: "}" };
+
+export function tokenize(s: string): Token[] {
+	const ans: Token[] = [];
+	while (true) {
+		if (s.startsWith("{|")) {
+			s = s.slice("{|".length);
+			ans.push({ type: "{|", str: "{|" });
+		} else if (s.startsWith("}")) {
+			s = s.slice("}".length);
+			ans.push({ type: "}", str: "}" });
+		} else if (s !== s.trimStart()) {
+			ans.push({ type: "spaces", str: s.slice(0, s.length - s.trimStart().length) });
+			s = s.trimStart();
+		} else if (s === "") { return ans; } else {
+			const { move, rest } = munch_one(s);
+			ans.push({ type: "move", move, str: s.slice(0, s.length - rest.length) });
+			s = rest;
+		}
+	}
+}
+
 export function parse_cursored(s: string): GameTree<Move> {
 	const ans: GameTree<Move> = { main: [], unevaluated: [] };
 	while (true) {
