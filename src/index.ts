@@ -92,6 +92,9 @@ function render(situation: Situation, previous_situation?: Situation) {
         for (let j = 0; j < 9; j++) {
             const entity = situation.board[i]![j];
             if (entity == null) {
+                if (previous_situation?.board[i]![j]) {
+                    ans += `<div class="newly_vacated" style="top:${50 + i * 50}px; left:${100 + j * 50}px;"></div>`
+                } 
                 continue;
             }
 
