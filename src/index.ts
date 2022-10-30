@@ -41,8 +41,8 @@ function load_history() {
         } else {
             render(state);
         }
-    } catch (e) {
-        if (e === "棋譜が空です") {
+    } catch (e: unknown) {
+        if (e instanceof Error && e.message === "棋譜が空です") {
             // どっちかにしておけばいい
             const state = get_initial_state("黒");
             render(state);
