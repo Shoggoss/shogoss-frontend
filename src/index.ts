@@ -92,7 +92,7 @@ function same_entity(e1: Entity, e2: Entity | undefined | null): boolean {
 
 type GUI_State = {
     situation: Situation,
-    selected: null | { type: "piece_on_board", coord: Coordinate }
+    selected: null | { type: "piece_on_board", coord: Coordinate } | { type: "piece_in_hand", index: number, side: Side }
 }
 
 const GUI_state: GUI_State = {
@@ -102,6 +102,11 @@ const GUI_state: GUI_State = {
 
 function select_piece_on_board(coord: Coordinate) {
     GUI_state.selected = { type: "piece_on_board", coord };
+    render(GUI_state.situation);
+}
+
+function select_piece_in_hand(index: number, side: Side) {
+    GUI_state.selected = { type: "piece_in_hand", index, side };
     render(GUI_state.situation);
 }
 
@@ -194,6 +199,24 @@ function render(situation: Situation, previous_situation?: Situation) {
                 }
             }
         }
+    } else if (GUI_state.selected?.type === "piece_in_hand") {
+        for (let row = 0; row < 9; row++) {
+            for (let col = 0; col < 9; col++) {
+                const row_ = toShogiRowName(row);
+                const col_ = toShogiColumnName(col);
+                const to: Coordinate = [col_, row_];
+
+                if (get_entity_from_coord(situation.board, to)) {
+                    continue; // 駒がある場所には打てない
+                }
+
+                const possible_destination = document.createElement("div");
+                possible_destination.classList.add("possible_destination");
+                possible_destination.style.cssText = `top:${50 + row * 50}px; left:${100 + col * 50}px;`;
+                possible_destination.addEventListener("click", () => { alert("打つのは未実装") })
+                ans.push(possible_destination);
+            }
+        }
     }
 
     situation.hand_of_white.forEach((prof, index) => {
@@ -201,6 +224,11 @@ function render(situation: Situation, previous_situation?: Situation) {
         piece_in_hand.classList.add("white");
         piece_in_hand.style.cssText = `top:${50 + index * 50}px; left: 40px;`;
         piece_in_hand.innerHTML = prof;
+        piece_in_hand.addEventListener("click", () => select_piece_in_hand(index, "白"));
+        const is_selected = GUI_state.selected?.type === "piece_in_hand" && GUI_state.selected.side === "白" ? GUI_state.selected.index === index : false;
+        if (is_selected) {
+            piece_in_hand.classList.add("selected");
+        }
         ans.push(piece_in_hand);
     });
 
@@ -209,6 +237,11 @@ function render(situation: Situation, previous_situation?: Situation) {
         piece_in_hand.classList.add("black");
         piece_in_hand.style.cssText = `top:${450 - index * 50}px; left: 586px;`;
         piece_in_hand.innerHTML = prof;
+        piece_in_hand.addEventListener("click", () => select_piece_in_hand(index, "黒"));
+        const is_selected = GUI_state.selected?.type === "piece_in_hand" && GUI_state.selected.side === "白" ? GUI_state.selected.index === index : false;
+        if (is_selected) {
+            piece_in_hand.classList.add("selected");
+        }
         ans.push(piece_in_hand);
     });
 
@@ -249,20 +282,32 @@ type KingEntity = {
 };
 
 function play_piece_phase(to: Coordinate, entity_that_moves: ShogiEntity | ChessEntity | KingEntity) {
-    if (GUI_state.selected?.type !== "piece_on_board") throw new Error("play_piece_phase played without piece_on_board specified");
-    let text = (document.getElementById("history")! as HTMLTextAreaElement).value;
-    const moves = parse_cursored(text);
-    if (moves.unevaluated.length > 0) {
-        if (!confirm("以降の局面が破棄されます。よろしいですか？（将来的には、局面を破棄せず分岐する機能を足したいと思っています）")) {
-            GUI_state.selected = null;
-            render(GUI_state.situation);
-            return;
+    const res: { text: string, from: Coordinate | "打" } | null = (() => {
+        let text = (document.getElementById("history")! as HTMLTextAreaElement).value;
+        const moves = parse_cursored(text);
+        if (moves.unevaluated.length > 0) {
+            if (!confirm("以降の局面が破棄されます。よろしいですか？（将来的には、局面を破棄せず分岐する機能を足したいと思っています）")) {
+                GUI_state.selected = null;
+                render(GUI_state.situation);
+                return null;
+            }
+            text = take_until_first_cursor(text);
         }
-        text = take_until_first_cursor(text);
+        if (GUI_state.selected?.type === "piece_on_board") {
+            const from: Coordinate = GUI_state.selected.coord;
+            return { text, from };
+        } else if (GUI_state.selected?.type === "piece_in_hand") {
+            return { text, from: "打" };
+        } else {
+            throw new Error(`駒が選択されていません`)
+        }
+    })();
+    if (res === null) {
+        return;
     }
-    const from: Coordinate = GUI_state.selected.coord;
-
-    const full_notation = `${entity_that_moves.side === "黒" ? "▲" : "△"}${to[0]}${to[1]}${entity_that_moves.prof}(${from[0]}${from[1]})`;
+    let { text, from } = res;
+    const from_txt = from === "打" ? "打" : `${from[0]}${from[1]}`;
+    const full_notation = `${entity_that_moves.side === "黒" ? "▲" : "△"}${to[0]}${to[1]}${entity_that_moves.prof}(${from_txt})`;
 
     // 無理な手を指した時に落とす
     try {
