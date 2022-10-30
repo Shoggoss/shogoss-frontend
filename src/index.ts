@@ -98,10 +98,13 @@ const GUI_state: GUI_State = {
 
 function select_piece_on_board(row: number, col: number) {
     GUI_state.selected = { type: "piece_on_board", row, col };
-    alert(`row: ${row}, col: ${col}`);
+    render(GUI_state.situation);
 }
 
+// previous_situation との差分には newly や newly_vacated といった CSS クラスをつけて描写
+// ただし、GUI_state.selected がある場合には、差分ではなくて選んだ駒について知りたいはずなので、newly の描写を抑制する
 function render(situation: Situation, previous_situation?: Situation) {
+    GUI_state.situation = situation;
     const board_dom = document.getElementById("board")!;
     board_dom.innerHTML = "";
     const ans: Node[] = [];
@@ -109,7 +112,7 @@ function render(situation: Situation, previous_situation?: Situation) {
         for (let col = 0; col < 9; col++) {
             const entity = situation.board[row]![col];
             if (entity == null) {
-                if (previous_situation?.board[row]![col]) {
+                if (previous_situation?.board[row]![col] && !GUI_state.selected) {
                     const newly_vacated = document.createElement("div");
                     newly_vacated.classList.add("newly_vacated");
                     newly_vacated.style.cssText = `top:${50 + row * 50}px; left:${100 + col * 50}px;`
@@ -118,11 +121,15 @@ function render(situation: Situation, previous_situation?: Situation) {
                 continue;
             }
 
-            const newly = previous_situation ? !same_entity(entity, previous_situation.board[row]![col]) : false;
+            const is_newly_updated = previous_situation && !GUI_state.selected ? !same_entity(entity, previous_situation.board[row]![col]) : false;
+            const is_selected = GUI_state.selected?.type === "piece_on_board" ? GUI_state.selected.row === row && GUI_state.selected.col === col : false;
             const piece_or_stone = document.createElement("div");
             piece_or_stone.classList.add(entity.side === "白" ? "white" : "black");
-            if (newly) {
+            if (is_newly_updated) {
                 piece_or_stone.classList.add("newly");
+            }
+            if (is_selected) {
+                piece_or_stone.classList.add("selected");
             }
             piece_or_stone.style.cssText = `top:${50 + row * 50}px; left:${100 + col * 50}px;`;
             piece_or_stone.innerHTML = getContentHTMLFromEntity(entity);
