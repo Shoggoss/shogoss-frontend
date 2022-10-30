@@ -1,4 +1,4 @@
-import { can_move, ChessEntity, Coordinate, Entity, entry_is_forbidden, get_initial_state, KingEntity, main, Move, ShogiColumnName, ShogiEntity, ShogiRowName, Side, Situation, throws_if_uncastlable, throws_if_unkumalable, UnpromotedShogiProfession } from "shogoss-core";
+import { can_move, can_place_stone, ChessEntity, Coordinate, Entity, entry_is_forbidden, get_initial_state, KingEntity, main, Move, ShogiColumnName, ShogiEntity, ShogiRowName, Side, Situation, throws_if_uncastlable, throws_if_unkumalable, UnpromotedShogiProfession } from "shogoss-core";
 import { backward_history, forward_history, parse_cursored, take_until_first_cursor } from "./gametree";
 
 window.addEventListener("load", () => {
@@ -223,6 +223,28 @@ function render(situation: Situation, previous_situation?: Situation) {
                 ans.push(possible_destination);
             }
         }
+    } else if (GUI_state.selected?.type === "stone_in_hand") {
+        for (let row = 0; row < 9; row++) {
+            for (let col = 0; col < 9; col++) {
+                const row_ = toShogiRowName(row);
+                const col_ = toShogiColumnName(col);
+                const to: Coordinate = [col_, row_];
+
+                if (get_entity_from_coord(situation.board, to)) {
+                    continue; // 駒がある場所には打てない
+                }
+
+                if (!can_place_stone(situation.board, GUI_state.selected.side, to)) {
+                    continue; // 着手禁止点を除外する
+                }
+                const side = GUI_state.selected.side;
+                const possible_destination = document.createElement("div");
+                possible_destination.classList.add("possible_destination");
+                possible_destination.style.cssText = `top:${50 + row * 50}px; left:${100 + col * 50}px;`;
+                possible_destination.addEventListener("click", () => place_stone(to, side))
+                ans.push(possible_destination);
+            }
+        }
     }
 
     situation.hand_of_white.forEach((prof, index) => {
@@ -261,7 +283,7 @@ function render(situation: Situation, previous_situation?: Situation) {
             const stone_in_hand = document.createElement("div");
             stone_in_hand.classList.add("white");
             stone_in_hand.style.cssText = `top:${50 - 1 * 50}px; left: 586px;`;
-            stone_in_hand.addEventListener("click", () => { GUI_state.selected = { type: "stone_in_hand", side: "白" }; render(GUI_state.situation) });
+            stone_in_hand.addEventListener("click", () => select_stone_in_hand("白"));
             const is_selected = GUI_state.selected?.type === "stone_in_hand" && GUI_state.selected.side === "白";
             if (is_selected) {
                 stone_in_hand.classList.add("selected");
@@ -271,7 +293,7 @@ function render(situation: Situation, previous_situation?: Situation) {
             const stone_in_hand = document.createElement("div");
             stone_in_hand.classList.add("black");
             stone_in_hand.style.cssText = `top:${450 + 1 * 50}px; left: 40px;`;
-            stone_in_hand.addEventListener("click", () => { GUI_state.selected = { type: "stone_in_hand", side: "黒" }; render(GUI_state.situation) });
+            stone_in_hand.addEventListener("click", () => select_stone_in_hand("黒"));
             const is_selected = GUI_state.selected?.type === "stone_in_hand" && GUI_state.selected.side === "黒";
             if (is_selected) {
                 stone_in_hand.classList.add("selected");
@@ -281,6 +303,11 @@ function render(situation: Situation, previous_situation?: Situation) {
     }
 
     board_dom.append(...ans);
+}
+
+function select_stone_in_hand(side: Side) {
+    GUI_state.selected = { type: "stone_in_hand", side };
+    render(GUI_state.situation);
 }
 
 function get_entity_from_coord<T>(board: Readonly<(T | null)[][]>, coord: Coordinate): T | null {
@@ -293,6 +320,38 @@ function get_entity_from_coord<T>(board: Readonly<(T | null)[][]>, coord: Coordi
     return (board[row_index]?.[column_index]) ?? null;
 }
 
+function place_stone(to: Coordinate, side: Side) {
+    let text = (document.getElementById("history")! as HTMLTextAreaElement).value;
+    const moves = parse_cursored(text);
+    if (moves.unevaluated.length > 0) {
+        if (!confirm("以降の局面が破棄されます。よろしいですか？（将来的には、局面を破棄せず分岐する機能を足したいと思っています）")) {
+            GUI_state.selected = null;
+            render(GUI_state.situation);
+            return null;
+        }
+    }
+    text = take_until_first_cursor(text);
+    text = text.trimEnd();
+
+    const stone_coord = `${to[0]}${to[1]}`;
+
+    // 無理な手を指した時に落とす
+    try {
+        main_(parse_cursored(text + stone_coord).main);
+    } catch (e) {
+        alert(e);
+        GUI_state.selected = null;
+        render(GUI_state.situation);
+        return;
+    }
+
+    text = text.trimEnd();
+    text += stone_coord;
+    (document.getElementById("history")! as HTMLTextAreaElement).value = text;
+    load_history();
+    return text;
+}
+
 function parachute(to: Coordinate, prof: UnpromotedShogiProfession, side: Side) {
     let text = (document.getElementById("history")! as HTMLTextAreaElement).value;
     const moves = parse_cursored(text);
@@ -302,7 +361,7 @@ function parachute(to: Coordinate, prof: UnpromotedShogiProfession, side: Side) 
             render(GUI_state.situation);
             return null;
         }
-    } 
+    }
     text = take_until_first_cursor(text);
 
     const from_txt = "打";
