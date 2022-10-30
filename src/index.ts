@@ -1,5 +1,5 @@
-import { can_move, Coordinate, Entity, get_initial_state, main, Move, ShogiColumnName, ShogiRowName, Situation, throws_if_uncastlable, throws_if_unkumalable } from "shogoss-core";
-import { backward_history, forward_history, parse_cursored } from "./gametree";
+import { can_move, ChessProfession, Coordinate, Entity, get_initial_state, KingProfession, main, Move, ShogiColumnName, ShogiProfession, ShogiRowName, Side, Situation, throws_if_uncastlable, throws_if_unkumalable } from "shogoss-core";
+import { backward_history, forward_history, parse_cursored, take_until_first_cursor } from "./gametree";
 
 window.addEventListener("load", () => {
     render(get_initial_state("黒"));
@@ -91,7 +91,7 @@ function same_entity(e1: Entity, e2: Entity | undefined | null): boolean {
 
 type GUI_State = {
     situation: Situation,
-    selected: null | { type: "piece_on_board", row: number, col: number }
+    selected: null | { type: "piece_on_board", coord: Coordinate }
 }
 
 const GUI_state: GUI_State = {
@@ -99,8 +99,8 @@ const GUI_state: GUI_State = {
     selected: null,
 }
 
-function select_piece_on_board(row: number, col: number) {
-    GUI_state.selected = { type: "piece_on_board", row, col };
+function select_piece_on_board(coord: Coordinate) {
+    GUI_state.selected = { type: "piece_on_board", coord };
     render(GUI_state.situation);
 }
 
@@ -124,8 +124,10 @@ function render(situation: Situation, previous_situation?: Situation) {
                 continue;
             }
 
+            const row_ = toShogiRowName(row);
+            const col_ = toShogiColumnName(col);
             const is_newly_updated = previous_situation && !GUI_state.selected ? !same_entity(entity, previous_situation.board[row]![col]) : false;
-            const is_selected = GUI_state.selected?.type === "piece_on_board" ? GUI_state.selected.row === row && GUI_state.selected.col === col : false;
+            const is_selected = GUI_state.selected?.type === "piece_on_board" ? GUI_state.selected.coord[1] === row_ && GUI_state.selected.coord[0] === col_ : false;
             const piece_or_stone = document.createElement("div");
             piece_or_stone.classList.add(entity.side === "白" ? "white" : "black");
             if (is_newly_updated) {
@@ -136,21 +138,23 @@ function render(situation: Situation, previous_situation?: Situation) {
             }
             piece_or_stone.style.cssText = `top:${50 + row * 50}px; left:${100 + col * 50}px;`;
             piece_or_stone.innerHTML = getContentHTMLFromEntity(entity);
-            const row_ = row;
-            const col_ = col;
-            piece_or_stone.addEventListener("click", () => select_piece_on_board(row_, col_))
+
+            piece_or_stone.addEventListener("click", () => select_piece_on_board([col_, row_]))
             ans.push(piece_or_stone);
         }
     }
 
     if (GUI_state.selected?.type === "piece_on_board") {
+        const entity_that_moves = get_entity_from_coord(situation.board, GUI_state.selected.coord)!;
+        if (entity_that_moves.type === "碁") {
+            throw new Error("碁石が動くはずがない");
+        }
         for (let row = 0; row < 9; row++) {
             for (let col = 0; col < 9; col++) {
-                const o: { to: Coordinate, from: Coordinate } = {
-                    to: [toShogiColumnName(col), toShogiRowName(row)],
-                    from: [toShogiColumnName(GUI_state.selected.col), toShogiRowName(GUI_state.selected.row)],
-                };
-
+                const row_ = toShogiRowName(row);
+                const col_ = toShogiColumnName(col);
+                const to: Coordinate = [col_, row_];
+                const o: { to: Coordinate, from: Coordinate } = { to, from: GUI_state.selected.coord };
                 const is_castlable = (() => {
                     try {
                         throws_if_uncastlable(situation.board, o);
@@ -172,7 +176,8 @@ function render(situation: Situation, previous_situation?: Situation) {
                 if (can_move(situation.board, o) || is_castlable || is_kumalable) {
                     const possible_destination = document.createElement("div");
                     possible_destination.classList.add("possible_destination");
-                    possible_destination.style.cssText = `top:${50 + row * 50}px; left:${100 + col * 50}px;`
+                    possible_destination.style.cssText = `top:${50 + row * 50}px; left:${100 + col * 50}px;`;
+                    possible_destination.addEventListener("click", () => { play_piece_phase(to, entity_that_moves) })
                     ans.push(possible_destination);
                 }
             }
@@ -196,6 +201,61 @@ function render(situation: Situation, previous_situation?: Situation) {
     });
 
     board_dom.append(...ans);
+}
+
+function get_entity_from_coord<T>(board: Readonly<(T | null)[][]>, coord: Coordinate): T | null {
+    const [column, row] = coord;
+    const row_index = "一二三四五六七八九".indexOf(row);
+    const column_index = "９８７６５４３２１".indexOf(column);
+    if (row_index === -1 || column_index === -1) {
+        throw new Error(`不正な座標です`)
+    }
+    return (board[row_index]?.[column_index]) ?? null;
+}
+
+type ShogiEntity = {
+    type: "しょ";
+    side: Side;
+    prof: ShogiProfession;
+    can_kumal: boolean;
+};
+
+type ChessEntity = {
+    type: "ス";
+    side: Side;
+    prof: ChessProfession;
+    never_moved: boolean;
+    subject_to_en_passant?: true | undefined;
+};
+
+type KingEntity = {
+    type: "王";
+    side: Side;
+    prof: KingProfession;
+    has_moved_only_once: boolean;
+    never_moved: boolean;
+};
+
+function play_piece_phase(to: Coordinate, entity_that_moves: ShogiEntity | ChessEntity | KingEntity) {
+    if (GUI_state.selected?.type !== "piece_on_board") throw new Error("play_piece_phase played without piece_on_board specified");
+    let text = (document.getElementById("history")! as HTMLTextAreaElement).value;
+    const moves = parse_cursored(text);
+    if (moves.unevaluated.length > 0) {
+        if (!confirm("以降の局面が破棄されます。よろしいですか？（将来的には、局面を破棄せず分岐する機能を足したいと思っています）")) {
+            GUI_state.selected = null;
+            render(GUI_state.situation);
+            return;
+        }
+        text = take_until_first_cursor(text);
+    }
+    const from: Coordinate = GUI_state.selected.coord;
+
+    // FIXME: 無理な時に落とす
+    // FIXME: 曖昧性が出ないときには from を書かずに通す
+    const move_in_text = `${entity_that_moves.side}${to[0]}${to[1]}${entity_that_moves.prof}(${from[0]}${from[1]})`;
+    text += move_in_text;
+    (document.getElementById("history")! as HTMLTextAreaElement).value = text;
+    load_history();
 }
 
 function toShogiRowName(n: number): ShogiRowName {

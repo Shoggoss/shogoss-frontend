@@ -61,6 +61,26 @@ export function forward_history(original_s: string): string | null {
 	}
 }
 
+export function take_until_first_cursor(original_s: string): string {
+	let s = original_s;
+	const indices = [];
+	// n 手分をパース
+	while (true) {
+		s = s.trimStart();
+		indices.push(original_s.length - s.length);
+
+		// {| に遭遇したら、
+		if (s.startsWith("{|")) {
+			// {| 以降を雑に削る
+			return original_s.slice(0, original_s.length - s.length);
+		} else if (s.trimStart() === "") {
+			return original_s;
+		}
+		const { move: _, rest } = munch_one(s);
+		s = rest;
+	}
+}
+
 export function backward_history(original_s: string): string | null {
 	let s = original_s;
 	const indices = [];
