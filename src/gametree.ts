@@ -41,8 +41,8 @@ export function parse_cursored(s: string): GameTree<Move> {
 				if (!tok) {
 					throw new Error("{| に対応する } がありません");
 				}
-				if (tok.type === "}") { 
-					return ans; 
+				if (tok.type === "}") {
+					return ans;
 				} else if (tok.type === "move") {
 					const move = tok.move;
 					ans.unevaluated.push(move);
@@ -98,31 +98,51 @@ export function forward_history(original_s: string): string | null {
 }
 
 export function backward_history(original_s: string): string | null {
-	let s = original_s;
+	const tokens = tokenize(original_s);
+	let ind = 0;
 	const indices = [];
 	// n 手分をパース
 	while (true) {
-		s = s.trimStart();
-		indices.push(original_s.length - s.length);
+		const tok = tokens[ind]?.type === "spaces" ? tokens[++ind] : tokens[ind];
 
-		// {| に遭遇したら、
-		if (s.startsWith("{|")) {
-			const nminus1_end = indices[indices.length - 2];
-			const n_end = indices[indices.length - 1];
-			if (nminus1_end === undefined || n_end === undefined) {
-				return null; // それ以上 backward できないので null を返す
-			}
-			return original_s.slice(0, nminus1_end) + "{|" + original_s.slice(nminus1_end, n_end) + original_s.slice(n_end + BOOKMARK_LENGTH);
-		} else if (s.trimStart() === "") {
+		indices.push(ind);
+
+		if (!tok) {
 			// 栞がないので生やす
 			const nminus1_end = indices[indices.length - 2];
 			const n_end = indices[indices.length - 1];
 			if (nminus1_end === undefined || n_end === undefined) {
 				return null; // それ以上 backward できないので null を返す
 			}
-			return original_s.slice(0, nminus1_end) + "{|" + original_s.slice(nminus1_end, n_end) + original_s.slice(n_end) + "}";
+			const new_tokens: Token[] =
+				[
+					...tokens.slice(0, nminus1_end),
+					{ type: "{|", str: "{|" },
+					...tokens.slice(nminus1_end, n_end),
+					...tokens.slice(n_end),
+					{ type: "}", str: "}" }
+				];
+			return new_tokens.map(a => a.str).join("");
 		}
-		const { move: _, rest } = munch_one(s);
-		s = rest;
+
+		// {| に遭遇したら、
+		if (tok.type === "{|") {
+			const nminus1_end = indices[indices.length - 2];
+			const n_end = indices[indices.length - 1];
+			if (nminus1_end === undefined || n_end === undefined) {
+				return null; // それ以上 backward できないので null を返す
+			}
+			const new_tokens: Token[] = [
+				...tokens.slice(0, nminus1_end),
+				{ type: "{|", str: "{|" },
+				...tokens.slice(nminus1_end, n_end),
+				...tokens.slice(n_end + 1)
+			];
+			return new_tokens.map(a => a.str).join("");
+		}
+
+		if (tok.type === "move") {
+			ind++;
+		}
 	}
 }
