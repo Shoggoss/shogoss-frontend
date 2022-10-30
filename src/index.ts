@@ -1,4 +1,4 @@
-import { Entity, get_initial_state, main, Situation } from "shogoss-core";
+import { Entity, GameEnd, get_initial_state, main, Move, ResolvedGameState, Situation } from "shogoss-core";
 import { backward_history, forward_history, parse_cursored } from "./gametree";
 
 window.addEventListener("load", () => {
@@ -28,27 +28,38 @@ function backward() {
     }
 }
 
+function main_(moves: Move[]) {
+    try {
+        return main(moves);
+    } catch (e: unknown) {
+        if (e instanceof Error && e.message === "棋譜が空です") {
+            // どっちかにしておけばいい
+            return get_initial_state("黒");
+        } else {
+            throw e;
+        }
+    }
+}
+
 function load_history() {
     const text = (document.getElementById("history")! as HTMLTextAreaElement).value;
     (document.getElementById("forward")! as HTMLButtonElement).disabled = forward_history(text) === null;
     (document.getElementById("backward")! as HTMLButtonElement).disabled = backward_history(text) === null;
     const moves = parse_cursored(text);
     try {
-        const state = main(moves.main);
+        const state = main_(moves.main);
+        const previous_state = main_(moves.main.slice(0, -1));
+        if (previous_state.phase === "game_end") {
+            throw new Error("should not happen");
+        }
         if (state.phase === "game_end") {
             alert(`勝者: ${state.victor}、理由: ${state.reason}`);
-            render(state.final_situation);
+            render(state.final_situation, previous_state);
         } else {
-            render(state);
+            render(state, previous_state);
         }
     } catch (e: unknown) {
-        if (e instanceof Error && e.message === "棋譜が空です") {
-            // どっちかにしておけばいい
-            const state = get_initial_state("黒");
-            render(state);
-        } else {
-            alert(e);
-        }
+        alert(e);
     }
 }
 
@@ -61,7 +72,21 @@ function getContentHTMLFromEntity(entity: Entity): string {
     return entity.prof
 }
 
-function render(situation: Situation) {
+function same_entity(e1: Entity, e2: Entity | undefined | null): boolean {
+    if (!e2) return false;
+    if (e1.side !== e2.side) return false;
+    if (e1.type === "碁") {
+        return e1.type === e2.type;
+    }
+
+    if (e2.type === "碁") {
+        return false;
+    }
+
+    return e1.prof === e2.prof;
+}
+
+function render(situation: Situation, previous_situation?: Situation) {
     let ans = "";
     for (let i = 0; i < 9; i++) {
         for (let j = 0; j < 9; j++) {
@@ -69,8 +94,10 @@ function render(situation: Situation) {
             if (entity == null) {
                 continue;
             }
+
+            const newly = previous_situation ? !same_entity(entity, previous_situation.board[i]![j]) : false;
             const str = getContentHTMLFromEntity(entity);
-            ans += `<div class="${entity.side === "白" ? "white" : "black"}" style="top:${50 + i * 50}px; left:${100 + j * 50}px;">${str}</div>`
+            ans += `<div class="${entity.side === "白" ? "white" : "black"} ${newly ? "newly" : ""}" style="top:${50 + i * 50}px; left:${100 + j * 50}px;">${str}</div>`
         }
     }
 
