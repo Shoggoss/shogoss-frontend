@@ -86,31 +86,68 @@ function same_entity(e1: Entity, e2: Entity | undefined | null): boolean {
     return e1.prof === e2.prof;
 }
 
+type GUI_State = {
+    situation: Situation,
+    selected: null | { type: "piece_on_board", row: number, col: number }
+}
+
+const GUI_state: GUI_State = {
+    situation: get_initial_state("黒"),
+    selected: null,
+}
+
+function select_piece_on_board(row: number, col: number) {
+    GUI_state.selected = { type: "piece_on_board", row, col };
+    alert(`row: ${row}, col: ${col}`);
+}
+
 function render(situation: Situation, previous_situation?: Situation) {
-    let ans = "";
-    for (let i = 0; i < 9; i++) {
-        for (let j = 0; j < 9; j++) {
-            const entity = situation.board[i]![j];
+    const board_dom = document.getElementById("board")!;
+    board_dom.innerHTML = "";
+    const ans: Node[] = [];
+    for (let row = 0; row < 9; row++) {
+        for (let col = 0; col < 9; col++) {
+            const entity = situation.board[row]![col];
             if (entity == null) {
-                if (previous_situation?.board[i]![j]) {
-                    ans += `<div class="newly_vacated" style="top:${50 + i * 50}px; left:${100 + j * 50}px;"></div>`
-                } 
+                if (previous_situation?.board[row]![col]) {
+                    const newly_vacated = document.createElement("div");
+                    newly_vacated.classList.add("newly_vacated");
+                    newly_vacated.style.cssText = `top:${50 + row * 50}px; left:${100 + col * 50}px;`
+                    ans.push(newly_vacated);
+                }
                 continue;
             }
 
-            const newly = previous_situation ? !same_entity(entity, previous_situation.board[i]![j]) : false;
-            const str = getContentHTMLFromEntity(entity);
-            ans += `<div class="${entity.side === "白" ? "white" : "black"} ${newly ? "newly" : ""}" style="top:${50 + i * 50}px; left:${100 + j * 50}px;">${str}</div>`
+            const newly = previous_situation ? !same_entity(entity, previous_situation.board[row]![col]) : false;
+            const piece_or_stone = document.createElement("div");
+            piece_or_stone.classList.add(entity.side === "白" ? "white" : "black");
+            if (newly) {
+                piece_or_stone.classList.add("newly");
+            }
+            piece_or_stone.style.cssText = `top:${50 + row * 50}px; left:${100 + col * 50}px;`;
+            piece_or_stone.innerHTML = getContentHTMLFromEntity(entity);
+            const row_ = row;
+            const col_ = col;
+            piece_or_stone.addEventListener("click", () => select_piece_on_board(row_, col_))
+            ans.push(piece_or_stone);
         }
     }
 
     situation.hand_of_white.forEach((prof, index) => {
-        ans += `<div class="white" style="top:${50 + index * 50}px; left: 40px;">${prof}</div>`
+        const piece_in_hand = document.createElement("div");
+        piece_in_hand.classList.add("white");
+        piece_in_hand.style.cssText = `top:${50 + index * 50}px; left: 40px;`;
+        piece_in_hand.innerHTML = prof;
+        ans.push(piece_in_hand);
     });
 
     situation.hand_of_black.forEach((prof, index) => {
-        ans += `<div class="black" style="top:${450 - index * 50}px; left: 586px;">${prof}</div>`
+        const piece_in_hand = document.createElement("div");
+        piece_in_hand.classList.add("black");
+        piece_in_hand.style.cssText = `top:${450 - index * 50}px; left: 586px;`;
+        piece_in_hand.innerHTML = prof;
+        ans.push(piece_in_hand);
     });
 
-    document.getElementById("board")!.innerHTML = ans;
+    board_dom.append(...ans);
 }
