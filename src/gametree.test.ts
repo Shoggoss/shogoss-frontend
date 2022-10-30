@@ -44,6 +44,12 @@ test('parse_cursored', () => {
 	);
 });
 
+test('parse_cursored_error', () => {
+	expect(() => parse_cursored(`{|▲７五ポ７四 △３四ナ１四 ▲６五ポ２五 △１一キ１五`)).toThrowError(
+		"{| に対応する } がありません"
+	);
+});
+
 test('forward_history', () => {
 	expect(forward_history(`{|▲７五ポ７四 
 △３四ナ１四 ▲６五ポ２五 △１一キ１五}`)).toEqual(`▲７五ポ７四 

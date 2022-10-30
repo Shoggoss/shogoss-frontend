@@ -26,24 +26,39 @@ export function tokenize(s: string): Token[] {
 }
 
 export function parse_cursored(s: string): GameTree<Move> {
+	const tokens = tokenize(s);
+	let ind = 0;
 	const ans: GameTree<Move> = { main: [], unevaluated: [] };
 	while (true) {
-		s = s.trimStart();
-		if (s.startsWith("{|")) {
-			s = s.slice(BOOKMARK_LENGTH);
-			while (true) {
-				s = s.trimStart();
-				if (s.startsWith("}")) return ans;
-				const { move, rest } = munch_one(s);
-				s = rest;
-				ans.unevaluated.push(move);
-			}
-		} else if (s.trimStart() === "") {
+		const tok = tokens[ind];
+		if (!tok) {
 			return ans;
 		}
-		const { move, rest } = munch_one(s);
-		s = rest;
-		ans.main.push(move);
+		if (tok.type === "{|") {
+			ind++;
+			while (true) {
+				const tok = tokens[ind];
+				if (!tok) {
+					throw new Error("{| に対応する } がありません");
+				}
+				if (tok.type === "}") { 
+					return ans; 
+				} else if (tok.type === "move") {
+					const move = tok.move;
+					ans.unevaluated.push(move);
+					ind++;
+				} else if (tok.type === "spaces") {
+					ind++;
+					continue;
+				}
+			}
+		} else if (tok.type === "move") {
+			ind++;
+			ans.main.push(tok.move)
+		} else if (tok.type === "spaces") {
+			ind++;
+			continue;
+		}
 	}
 }
 
