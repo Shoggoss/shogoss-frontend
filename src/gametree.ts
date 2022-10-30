@@ -62,38 +62,42 @@ export function parse_cursored(s: string): GameTree<Move> {
 	}
 }
 
-const BOOKMARK_LENGTH = "{|".length;
-
 export function forward_history(original_s: string): string | null {
+	const tokens = tokenize(original_s);
+	let ind = 0;
 	let s = original_s;
 	// n 手分をパース
 	while (true) {
-		s = s.trimStart();
+		const tok = tokens[ind]?.type === "spaces" ? tokens[++ind] : tokens[ind];
 
 		// {| に遭遇したら、
-		const till_nth = original_s.slice(0, original_s.length - s.length);
-		if (s.startsWith("{|")) {
+		if (tok?.type === "{|") {
+			const till_nth = tokens.slice(0, ind);
 			// {| を読み飛ばし、
-			s = s.slice(BOOKMARK_LENGTH);
+			ind++;
 
 			// スペースを保全して
-			const start_of_space = original_s.length - s.length;
-			s = s.trimStart();
+			const start_of_space = ind;
+			const tok = tokens[ind]?.type === "spaces" ? tokens[++ind] : tokens[ind];
 
-			//  1 手分をパース。1 手も残ってないなら、それはそれ以上 forward できないので null を返す
-			if (s.startsWith("}")) { return null; }
-			const { move: _, rest } = munch_one(s);
-			s = rest;
-			const end_of_space_and_move = original_s.length - s.length;
-			s = s.trimStart();
-			const end_of_space_and_move_and_space = original_s.length - s.length;
-
-			return till_nth + original_s.slice(start_of_space, end_of_space_and_move) + original_s.slice(end_of_space_and_move, end_of_space_and_move_and_space) + "{|" + original_s.slice(end_of_space_and_move_and_space);
-		} else if (s.trimStart() === "") {
+			// 1 手分をパース。1 手も残ってないなら、それはそれ以上 forward できないので null を返す
+			if (tok?.type === "}") { return null; }
+			ind++;
+			const end_of_space_and_move = ind;
+			if (tokens[ind]?.type === "spaces") ++ind;
+			const end_of_space_and_move_and_space = ind;
+			const new_tokens: Token[] = [
+				...till_nth,
+				...tokens.slice(start_of_space, end_of_space_and_move),
+				...tokens.slice(end_of_space_and_move, end_of_space_and_move_and_space),
+				{ type: "{|", str: "{|" },
+				...tokens.slice(end_of_space_and_move_and_space)
+			];
+			return new_tokens.map(a => a.str).join("");
+		} else if (!tok) {
 			return null; // それ以上 forward できないので null を返す
 		}
-		const { move: _, rest } = munch_one(s);
-		s = rest;
+		ind++;
 	}
 }
 
