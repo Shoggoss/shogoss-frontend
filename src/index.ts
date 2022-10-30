@@ -9,6 +9,7 @@ window.addEventListener("load", () => {
 });
 
 function forward() {
+    GUI_state.selected = null;
     const text = (document.getElementById("history")! as HTMLTextAreaElement).value;
 
     const new_history = forward_history(text);
@@ -19,6 +20,7 @@ function forward() {
 }
 
 function backward() {
+    GUI_state.selected = null;
     const text = (document.getElementById("history")! as HTMLTextAreaElement).value;
 
     const new_history = backward_history(text);
@@ -42,6 +44,7 @@ function main_(moves: Move[]) {
 }
 
 function load_history() {
+    GUI_state.selected = null;
     const text = (document.getElementById("history")! as HTMLTextAreaElement).value;
     (document.getElementById("forward")! as HTMLButtonElement).disabled = forward_history(text) === null;
     (document.getElementById("backward")! as HTMLButtonElement).disabled = backward_history(text) === null;
