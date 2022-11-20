@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { can_move, can_place_stone, ChessEntity, Coordinate, Entity, entry_is_forbidden, get_initial_state, KingEntity, main, Move, ShogiColumnName, ShogiEntity, ShogiRowName, Side, Situation, throws_if_uncastlable, throws_if_unkumalable, UnpromotedShogiProfession } from "shogoss-core";
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
