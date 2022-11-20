@@ -1,6 +1,41 @@
 import React from 'react';
+import { ShogiColumnName, ShogiRowName } from 'shogoss-core';
 // import logo from './logo.svg';
 import './App.css';
+
+class Board extends React.Component {
+  render() {
+    return (
+      <div id="board"></div>
+    )
+  }
+}
+
+function toShogiRowName(n: number): ShogiRowName {
+  return "一二三四五六七八九"[n] as ShogiRowName;
+}
+
+function toShogiColumnName(n: number): ShogiColumnName {
+  return "９８７６５４３２１"[n] as ShogiColumnName;
+}
+
+class Background extends React.Component {
+  render() {
+    const horizontal_lines = Array.from({ length: 10 }, (_, i) => <div
+      style={{ top: `${45 + i * 50}px`, left: "95px", height: "2px", width: "452px", backgroundColor: "black", position: "absolute" }}>
+    </div>);
+    const vertical_lines = Array.from({ length: 10 }, (_, i) => <div
+      style={{ top: "45px", left: `${95 + i * 50}px`, height: "452px", width: "2px", backgroundColor: "black", position: "absolute" }}>
+    </div>)
+    const row_labels = Array.from({ length: 10 }, (_, i) => <div
+      style={{ top: `${50 + i * 50}px`, left: "555px", position: "absolute", width: "40px", lineHeight: "40px" }}>{toShogiRowName(i)}
+    </div>);
+    const column_labels = Array.from({ length: 10 }, (_, i) => <div
+      style={{ top: "20px", left: `${100 + i * 50}px`, position: "absolute", width: "40px", textAlign: "center" }}>{toShogiColumnName(i)}
+    </div>);
+    return [...horizontal_lines, ...vertical_lines, ...column_labels, ...row_labels];
+  }
+}
 
 function App() {
   return (
@@ -19,87 +54,8 @@ function App() {
           href="https://github.com/Shoggoss/shogoss-parser/blob/main/README.md">棋譜の書き方の細則</a></li>
       </ul>
       <div id="main" style={{ position: "relative" }}>
-        <div id="background">
-          <div
-            style={{ top: "45px", left: "95px", height: "2px", width: "452px", backgroundColor: "black", position: "absolute" }}>
-          </div>
-          <div
-            style={{ top: "95px", left: "95px", height: "2px", width: "452px", backgroundColor: "black", position: "absolute" }}>
-          </div>
-          <div
-            style={{ top: "145px", left: "95px", height: "2px", width: "452px", backgroundColor: "black", position: "absolute" }}>
-          </div>
-          <div
-            style={{ top: "195px", left: "95px", height: "2px", width: "452px", backgroundColor: "black", position: "absolute" }}>
-          </div>
-          <div
-            style={{ top: "245px", left: "95px", height: "2px", width: "452px", backgroundColor: "black", position: "absolute" }}>
-          </div>
-          <div
-            style={{ top: "295px", left: "95px", height: "2px", width: "452px", backgroundColor: "black", position: "absolute" }}>
-          </div>
-          <div
-            style={{ top: "345px", left: "95px", height: "2px", width: "452px", backgroundColor: "black", position: "absolute" }}>
-          </div>
-          <div
-            style={{ top: "395px", left: "95px", height: "2px", width: "452px", backgroundColor: "black", position: "absolute" }}>
-          </div>
-          <div
-            style={{ top: "445px", left: "95px", height: "2px", width: "452px", backgroundColor: "black", position: "absolute" }}>
-          </div>
-          <div
-            style={{ top: "495px", left: "95px", height: "2px", width: "452px", backgroundColor: "black", position: "absolute" }}>
-          </div>
-          <div
-            style={{ top: "45px", left: "95px", height: "452px", width: "2px", backgroundColor: "black", position: "absolute" }}>
-          </div>
-          <div
-            style={{ top: "45px", left: "145px", height: "452px", width: "2px", backgroundColor: "black", position: "absolute" }}>
-          </div>
-          <div
-            style={{ top: "45px", left: "195px", height: "452px", width: "2px", backgroundColor: "black", position: "absolute" }}>
-          </div>
-          <div
-            style={{ top: "45px", left: "245px", height: "452px", width: "2px", backgroundColor: "black", position: "absolute" }}>
-          </div>
-          <div
-            style={{ top: "45px", left: "295px", height: "452px", width: "2px", backgroundColor: "black", position: "absolute" }}>
-          </div>
-          <div
-            style={{ top: "45px", left: "345px", height: "452px", width: "2px", backgroundColor: "black", position: "absolute" }}>
-          </div>
-          <div
-            style={{ top: "45px", left: "395px", height: "452px", width: "2px", backgroundColor: "black", position: "absolute" }}>
-          </div>
-          <div
-            style={{ top: "45px", left: "445px", height: "452px", width: "2px", backgroundColor: "black", position: "absolute" }}>
-          </div>
-          <div
-            style={{ top: "45px", left: "495px", height: "452px", width: "2px", backgroundColor: "black", position: "absolute" }}>
-          </div>
-          <div
-            style={{ top: "45px", left: "545px", height: "452px", width: "2px", backgroundColor: "black", position: "absolute" }}>
-          </div>
-          <div style={{ top: "50px", left: "555px", position: "absolute", width: "40px", lineHeight: "40px" }}>一</div>
-          <div style={{ top: "100px", left: "555px", position: "absolute", width: "40px", lineHeight: "40px" }}>二</div>
-          <div style={{ top: "150px", left: "555px", position: "absolute", width: "40px", lineHeight: "40px" }}>三</div>
-          <div style={{ top: "200px", left: "555px", position: "absolute", width: "40px", lineHeight: "40px" }}>四</div>
-          <div style={{ top: "250px", left: "555px", position: "absolute", width: "40px", lineHeight: "40px" }}>五</div>
-          <div style={{ top: "300px", left: "555px", position: "absolute", width: "40px", lineHeight: "40px" }}>六</div>
-          <div style={{ top: "350px", left: "555px", position: "absolute", width: "40px", lineHeight: "40px" }}>七</div>
-          <div style={{ top: "400px", left: "555px", position: "absolute", width: "40px", lineHeight: "40px" }}>八</div>
-          <div style={{ top: "450px", left: "555px", position: "absolute", width: "40px", lineHeight: "40px" }}>九</div>
-          <div style={{ top: "20px", left: "100px", position: "absolute", width: "40px", textAlign: "center" }}>９</div>
-          <div style={{ top: "20px", left: "150px", position: "absolute", width: "40px", textAlign: "center" }}>８</div>
-          <div style={{ top: "20px", left: "200px", position: "absolute", width: "40px", textAlign: "center" }}>７</div>
-          <div style={{ top: "20px", left: "250px", position: "absolute", width: "40px", textAlign: "center" }}>６</div>
-          <div style={{ top: "20px", left: "300px", position: "absolute", width: "40px", textAlign: "center" }}>５</div>
-          <div style={{ top: "20px", left: "350px", position: "absolute", width: "40px", textAlign: "center" }}>４</div>
-          <div style={{ top: "20px", left: "400px", position: "absolute", width: "40px", textAlign: "center" }}>３</div>
-          <div style={{ top: "20px", left: "450px", position: "absolute", width: "40px", textAlign: "center" }}>２</div>
-          <div style={{ top: "20px", left: "500px", position: "absolute", width: "40px", textAlign: "center" }}>１</div>
-        </div>
-        <div id="board"></div>
+        <Background />
+        <Board />
         <textarea id="history" style={{ width: "300px", height: "500px", position: "absolute", left: "660px" }}>{`{|▲７五ポ７四 
 △３四ナ１四 
 ▲６五ポ２五 
