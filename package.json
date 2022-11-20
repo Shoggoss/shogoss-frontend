@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "shogoss-core": "^0.0.7",
-    "shogoss-parser": "^0.0.3"
+    "shogoss-parser": "^0.0.3",
+    "shogoss-frontend-gametree-parser": "0.0.1"
   }
 }
