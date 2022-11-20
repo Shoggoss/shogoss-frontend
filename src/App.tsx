@@ -1,18 +1,10 @@
 import React from 'react';
-import { can_move, can_place_stone, ChessEntity, Coordinate, Entity, entry_is_forbidden, get_initial_state, KingEntity, main, Move, ShogiColumnName, ShogiEntity, ShogiRowName, Side, Situation, throws_if_uncastlable, throws_if_unkumalable, UnpromotedShogiProfession } from "shogoss-core";
+import { can_move, can_place_stone, ChessEntity, Coordinate, Entity, entry_is_forbidden, KingEntity, ShogiEntity, Side, Situation, throws_if_uncastlable, throws_if_unkumalable, UnpromotedShogiProfession } from "shogoss-core";
 import { backward_history, forward_history, parse_cursored, take_until_first_cursor } from "shogoss-frontend-gametree-parser";
+import { main_, toShogiColumnName, toShogiRowName, same_entity, get_entity_from_coord } from './Pure'
 
 // import logo from './logo.svg';
 import './App.css';
-
-
-function toShogiRowName(n: number): ShogiRowName {
-  return "一二三四五六七八九"[n] as ShogiRowName;
-}
-
-function toShogiColumnName(n: number): ShogiColumnName {
-  return "９８７６５４３２１"[n] as ShogiColumnName;
-}
 
 class Background extends React.Component {
   render() {
@@ -158,22 +150,6 @@ class BWCheckBox extends React.Component<{}, BWCheckBoxProps> {
   }
 }
 
-
-function same_entity(e1: Entity, e2: Entity | undefined | null): boolean {
-  if (!e2) return false;
-  if (e1.side !== e2.side) return false;
-  if (e1.type === "碁") {
-    return e1.type === e2.type;
-  }
-
-  if (e2.type === "碁") {
-    return false;
-  }
-
-  return e1.prof === e2.prof;
-}
-
-
 interface GameProps {
   history: string;
   situation: Situation,
@@ -181,18 +157,6 @@ interface GameProps {
   selected: null | { type: "piece_on_board", coord: Coordinate } | { type: "piece_in_hand", index: number, side: Side } | { type: "stone_in_hand", side: Side };
 }
 
-function main_(moves: Move[]) {
-  try {
-    return main(moves);
-  } catch (e: unknown) {
-    if (e instanceof Error && e.message === "棋譜が空です") {
-      // どっちかにしておけばいい
-      return get_initial_state("黒");
-    } else {
-      throw e;
-    }
-  }
-}
 
 function getContentHTMLFromEntity(entity: Entity): JSX.Element {
   if (entity.type === "碁") return <span></span>;
@@ -203,17 +167,6 @@ function getContentHTMLFromEntity(entity: Entity): JSX.Element {
   }
   return <span>{entity.prof}</span>
 }
-
-function get_entity_from_coord<T>(board: Readonly<(T | null)[][]>, coord: Coordinate): T | null {
-  const [column, row] = coord;
-  const row_index = "一二三四五六七八九".indexOf(row);
-  const column_index = "９８７６５４３２１".indexOf(column);
-  if (row_index === -1 || column_index === -1) {
-    throw new Error(`不正な座標です`)
-  }
-  return (board[row_index]?.[column_index]) ?? null;
-}
-
 
 class Game extends React.Component<{}, GameProps> {
   constructor(props: GameProps) {
@@ -293,8 +246,6 @@ class Game extends React.Component<{}, GameProps> {
     }
 
     const loose_notation = `${entity_that_moves.side === "黒" ? "▲" : "△"}${to[0]}${to[1]}${entity_that_moves.prof}`;
-
-
 
     // 曖昧性が出ないときには from を書かずに通す
     try {
