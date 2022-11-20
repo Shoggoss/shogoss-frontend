@@ -1,5 +1,6 @@
 import React from 'react';
-import { ShogiColumnName, ShogiRowName } from 'shogoss-core';
+import { can_move, can_place_stone, ChessEntity, Coordinate, Entity, entry_is_forbidden, get_initial_state, KingEntity, main, Move, ShogiColumnName, ShogiEntity, ShogiRowName, Side, Situation, throws_if_uncastlable, throws_if_unkumalable, UnpromotedShogiProfession } from "shogoss-core";
+
 // import logo from './logo.svg';
 import './App.css';
 
@@ -117,6 +118,78 @@ class History extends React.Component<{}, HistoryProps> {
   }
 }
 
+class HistoryLoadButton extends React.Component {
+  render() {
+    return <button id="load_history" style={{ left: "660px", top: "520px", position: "absolute" }}>棋譜を読み込む</button>;
+  }
+}
+
+interface HistoryForwardButtonProps {
+  disabled: boolean
+}
+
+class HistoryForwardButton extends React.Component<{}, HistoryForwardButtonProps> {
+  constructor(props: HistoryForwardButtonProps) {
+    super(props);
+    this.state = { disabled: false };
+  }
+  render(): React.ReactNode {
+    return <button id="forward" disabled={this.state.disabled} style={{ left: "334px", top: "500px", position: "absolute" }}>一手進む→</button>
+  }
+}
+
+
+interface HistoryBackwardButtonProps {
+  disabled: boolean
+}
+
+class HistoryBackwardButton extends React.Component<{}, HistoryBackwardButtonProps> {
+  constructor(props: HistoryBackwardButtonProps) {
+    super(props);
+    this.state = { disabled: false };
+  }
+  render(): React.ReactNode {
+    return <button id="backward" style={{ left: "228px", top: "500px", position: "absolute" }} disabled={this.state.disabled}>←一手戻る</button>
+  }
+}
+
+interface BWCheckBoxProps {
+  checked: boolean
+}
+
+class BWCheckBox extends React.Component<{}, BWCheckBoxProps> {
+  constructor(props: HistoryBackwardButtonProps) {
+    super(props);
+    this.state = { checked: false };
+  }
+  render(): React.ReactNode {
+    return <label style={{ top: "-30px", left: "720px", position: "absolute" }}><input type="checkbox" id="hanzi_black_white" checked={this.state.checked} /> 「黒」「白」で表示</label>
+
+  }
+}
+
+interface GameProps {
+  history: string;
+  situation: Situation,
+  selected: null | { type: "piece_on_board", coord: Coordinate } | { type: "piece_in_hand", index: number, side: Side } | { type: "stone_in_hand", side: Side };
+}
+
+class Game extends React.Component<{}, GameProps> {
+  render() {
+    return (
+      <div>
+        <Background />
+        <Board />
+        <History />
+        <HistoryLoadButton />
+        <HistoryForwardButton />
+        <HistoryBackwardButton />
+        <BWCheckBox />
+      </div>
+    )
+  }
+}
+
 function App() {
   return (
     <div id="App">
@@ -134,13 +207,7 @@ function App() {
           href="https://github.com/Shoggoss/shogoss-parser/blob/main/README.md">棋譜の書き方の細則</a></li>
       </ul>
       <div id="main" style={{ position: "relative" }}>
-        <Background />
-        <Board />
-        <History />
-        <button id="load_history" style={{ left: "660px", top: "520px", position: "absolute" }}>棋譜を読み込む</button>
-        <button id="forward" style={{ left: "334px", top: "500px", position: "absolute" }}>一手進む→</button>
-        <button id="backward" style={{ left: "228px", top: "500px", position: "absolute" }} disabled>←一手戻る</button>
-        <label style={{ top: "-30px", left: "720px", position: "absolute" }}><input type="checkbox" id="hanzi_black_white" /> 「黒」「白」で表示</label>
+        <Game />
         <div
           style={{ position: "absolute", top: "550px", border: "1px solid black", backgroundColor: "#dfeed2", width: "900px", padding: "5px" }}>
           <p>このサイトを実装した人は以下のボドゲも実装しています：</p>
