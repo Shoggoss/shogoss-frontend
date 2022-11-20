@@ -1,16 +1,10 @@
 import React from 'react';
 import { can_move, can_place_stone, ChessEntity, Coordinate, Entity, entry_is_forbidden, get_initial_state, KingEntity, main, Move, ShogiColumnName, ShogiEntity, ShogiRowName, Side, Situation, throws_if_uncastlable, throws_if_unkumalable, UnpromotedShogiProfession } from "shogoss-core";
+import { backward_history, forward_history, parse_cursored, take_until_first_cursor } from "shogoss-frontend-gametree-parser";
 
 // import logo from './logo.svg';
 import './App.css';
 
-class Board extends React.Component {
-  render() {
-    return (
-      <div id="board"></div>
-    )
-  }
-}
 
 function toShogiRowName(n: number): ShogiRowName {
   return "一二三四五六七八九"[n] as ShogiRowName;
@@ -118,11 +112,7 @@ class History extends React.Component<{}, HistoryProps> {
   }
 }
 
-class HistoryLoadButton extends React.Component {
-  render() {
-    return <button id="load_history" style={{ left: "660px", top: "520px", position: "absolute" }}>棋譜を読み込む</button>;
-  }
-}
+
 
 interface HistoryForwardButtonProps {
   disabled: boolean
@@ -168,20 +158,443 @@ class BWCheckBox extends React.Component<{}, BWCheckBoxProps> {
   }
 }
 
+
+function same_entity(e1: Entity, e2: Entity | undefined | null): boolean {
+  if (!e2) return false;
+  if (e1.side !== e2.side) return false;
+  if (e1.type === "碁") {
+    return e1.type === e2.type;
+  }
+
+  if (e2.type === "碁") {
+    return false;
+  }
+
+  return e1.prof === e2.prof;
+}
+
+
 interface GameProps {
   history: string;
   situation: Situation,
+  previous_situation: Situation | null,
   selected: null | { type: "piece_on_board", coord: Coordinate } | { type: "piece_in_hand", index: number, side: Side } | { type: "stone_in_hand", side: Side };
 }
 
+function main_(moves: Move[]) {
+  try {
+    return main(moves);
+  } catch (e: unknown) {
+    if (e instanceof Error && e.message === "棋譜が空です") {
+      // どっちかにしておけばいい
+      return get_initial_state("黒");
+    } else {
+      throw e;
+    }
+  }
+}
+
+function getContentHTMLFromEntity(entity: Entity): JSX.Element {
+  if (entity.type === "碁") return <span></span>;
+  if (entity.type === "ス" && entity.prof !== "と" && entity.prof !== "ポ") {
+    return <span style={{ fontSize: "200%" }}>{
+      { キ: "♔", ク: "♕", ル: "♖", ビ: "♗", ナ: "♘" }[entity.prof]
+    }</span>;
+  }
+  return <span>{entity.prof}</span>
+}
+
+function get_entity_from_coord<T>(board: Readonly<(T | null)[][]>, coord: Coordinate): T | null {
+  const [column, row] = coord;
+  const row_index = "一二三四五六七八九".indexOf(row);
+  const column_index = "９８７６５４３２１".indexOf(column);
+  if (row_index === -1 || column_index === -1) {
+    throw new Error(`不正な座標です`)
+  }
+  return (board[row_index]?.[column_index]) ?? null;
+}
+
+
 class Game extends React.Component<{}, GameProps> {
+  constructor(props: GameProps) {
+    super(props);
+    this.state = props;
+  }
+
+  load_history() {
+    this.setState({ selected: null });
+    const text = (document.getElementById("history")! as HTMLTextAreaElement).value;
+    (document.getElementById("forward")! as HTMLButtonElement).disabled = forward_history(text) === null;
+    (document.getElementById("backward")! as HTMLButtonElement).disabled = backward_history(text) === null;
+    const moves = parse_cursored(text);
+    try {
+      const state = main_(moves.main);
+      const previous_state = main_(moves.main.slice(0, -1));
+      if (previous_state.phase === "game_end") {
+        throw new Error("should not happen");
+      }
+      if (state.phase === "game_end") {
+        alert(`勝者: ${state.victor}、理由: ${state.reason}`);
+        this.setState({ situation: state.final_situation, previous_situation: previous_state });
+        this.render();
+      } else {
+        this.setState({ situation: state, previous_situation: previous_state });
+        this.render();
+      }
+    } catch (e: unknown) {
+      alert(e);
+    }
+  }
+
+  select_piece_on_board(coord: Coordinate) {
+    this.setState({ selected: { type: "piece_on_board", coord } });
+    this.setState({ previous_situation: null });
+    this.render();
+  }
+
+  append_and_load(notation: string, text: string) {
+    text = text.trimEnd();
+    text += (text ? "　" : "") + notation;
+    (document.getElementById("history")! as HTMLTextAreaElement).value = text;
+    this.load_history();
+    return text;
+  }
+
+  move_piece(to: Coordinate, entity_that_moves: ShogiEntity | ChessEntity | KingEntity) {
+    if (this.state.selected?.type !== "piece_on_board") {
+      throw new Error("should not happen");
+    }
+
+    let text = (document.getElementById("history")! as HTMLTextAreaElement).value;
+    const moves = parse_cursored(text);
+    if (moves.unevaluated.length > 0) {
+      if (!window.confirm("以降の局面が破棄されます。よろしいですか？（将来的には、局面を破棄せず分岐する機能を足したいと思っています）")) {
+        this.setState({ selected: null });
+        this.setState({ previous_situation: null });
+        this.render();
+        return null;
+      }
+    }
+    text = take_until_first_cursor(text);
+    const from: Coordinate = this.state.selected.coord;
+
+    const from_txt = `${from[0]}${from[1]}`;
+    const full_notation = `${entity_that_moves.side === "黒" ? "▲" : "△"}${to[0]}${to[1]}${entity_that_moves.prof}(${from_txt})`;
+
+    // 無理な手を指した時に落とす
+    try {
+      main_(parse_cursored(text + full_notation).main);
+    } catch (e) {
+      alert(e);
+      this.setState({ selected: null });
+      this.setState({ previous_situation: null });
+      this.render();
+      return;
+    }
+
+    const loose_notation = `${entity_that_moves.side === "黒" ? "▲" : "△"}${to[0]}${to[1]}${entity_that_moves.prof}`;
+
+
+
+    // 曖昧性が出ないときには from を書かずに通す
+    try {
+      main_(parse_cursored(text + loose_notation).main);
+    } catch (e) {
+      // 曖昧性が出た
+      text = this.append_and_load(full_notation, text);
+      return;
+    }
+
+    // 曖昧性が無いので from を書かずに通す
+    // ただし、ここで「二ポの可能性は無視して曖昧性を考える」という仕様が牙をむく
+    if (entity_that_moves.prof !== "ポ") {
+      text = this.append_and_load(loose_notation, text);
+      return;
+    } else {
+      const loose = main_(parse_cursored(text + loose_notation).main);
+      const full = main_(parse_cursored(text + full_notation).main);
+      // loose で解釈すると二ポが回避できるが、full で解釈すると二ポであってゲームが終了するとき
+      // これは「二ポです」を知らせるために始点明記が必要
+      if (loose.phase === "resolved" && full.phase === "game_end") {
+        text = this.append_and_load(full_notation, text);
+        return;
+      } else if (loose.phase === "resolved" && full.phase === "resolved") {
+        // 移動したポーンが即座に碁で取られて二ポが解消するパターンの場合には、「直進」との競合が発生することはない
+        // したがって、この場合は直進を採用して問題ないはず
+        text = this.append_and_load(loose_notation, text);
+        return;
+      } else {
+        // もうよくわかんないから full notation で書いておきます
+        text = this.append_and_load(full_notation, text);
+      }
+    }
+  }
+
+  parachute(to: Coordinate, prof: UnpromotedShogiProfession, side: Side) {
+    let text = (document.getElementById("history")! as HTMLTextAreaElement).value;
+    const moves = parse_cursored(text);
+    if (moves.unevaluated.length > 0) {
+      if (!window.confirm("以降の局面が破棄されます。よろしいですか？（将来的には、局面を破棄せず分岐する機能を足したいと思っています）")) {
+        this.setState({ selected: null });
+        this.setState({ previous_situation: null });
+        this.render();
+        return null;
+      }
+    }
+    text = take_until_first_cursor(text);
+
+    const from_txt = "打";
+    const full_notation = `${side === "黒" ? "▲" : "△"}${to[0]}${to[1]}${prof}${from_txt}`;
+
+    // 無理な手を指した時に落とす
+    try {
+      main_(parse_cursored(text + full_notation).main);
+    } catch (e) {
+      alert(e);
+      this.setState({ selected: null });
+      this.setState({ previous_situation: null });
+      this.render();
+      return;
+    }
+
+    const loose_notation = `${side === "黒" ? "▲" : "△"}${to[0]}${to[1]}${prof}`;
+
+    // 曖昧性が出ないときには from を書かずに通す
+    try {
+      main_(parse_cursored(text + loose_notation).main);
+    } catch (e) {
+      // 曖昧性が出た
+      text = this.append_and_load(full_notation, text);
+      return;
+    }
+
+    // 曖昧性が無いので from を書かずに通す
+    text = this.append_and_load(loose_notation, text);
+    return;
+  }
+
+  select_piece_in_hand(index: number, side: Side) {
+    this.setState({ selected: { type: "piece_in_hand", index, side } });
+    this.setState({ previous_situation: null })
+    this.render();
+  }
+
+  place_stone(to: Coordinate, side: Side) {
+    let text = (document.getElementById("history")! as HTMLTextAreaElement).value;
+    const moves = parse_cursored(text);
+    if (moves.unevaluated.length > 0) {
+      if (!window.confirm("以降の局面が破棄されます。よろしいですか？（将来的には、局面を破棄せず分岐する機能を足したいと思っています）")) {
+        this.setState({ selected: null });
+        this.setState({ previous_situation: null });
+        this.render();
+        return null;
+      }
+    }
+    text = take_until_first_cursor(text);
+    text = text.trimEnd();
+
+    const stone_coord = `${to[0]}${to[1]}`;
+
+    // 無理な手を指した時に落とす
+    try {
+      main_(parse_cursored(text + stone_coord).main);
+    } catch (e) {
+      alert(e);
+      this.setState({ selected: null });
+      this.setState({ previous_situation: null });
+      this.render();
+      return;
+    }
+
+    text = text.trimEnd();
+    text += stone_coord;
+    (document.getElementById("history")! as HTMLTextAreaElement).value = text;
+    this.load_history();
+    return text;
+  }
+
+  select_stone_in_hand(side: Side) {
+    this.setState({ selected: { type: "stone_in_hand", side } });
+    this.setState({ previous_situation: null });
+    this.render();
+  }
+
+
   render() {
+    if ((document.getElementById("hanzi_black_white") as HTMLInputElement).checked) {
+      (document.getElementById("history")! as HTMLTextAreaElement).value =
+        (document.getElementById("history")! as HTMLTextAreaElement).value.replace(/[黒▲☗]/g, "黒").replace(/[白△☖]/g, "白");
+    } else {
+      (document.getElementById("history")! as HTMLTextAreaElement).value =
+        (document.getElementById("history")! as HTMLTextAreaElement).value.replace(/[黒▲☗]/g, "▲").replace(/[白△☖]/g, "△");
+    }
+
+    const board_content: JSX.Element[] = [];
+    for (let row = 0; row < 9; row++) {
+      for (let col = 0; col < 9; col++) {
+        const entity = this.state.situation.board[row]![col];
+        if (entity == null) {
+          if (this.state.previous_situation?.board[row]![col] && !this.state.selected) {
+            board_content.push(<div className="newly_vacated" style={{ top: `${50 + row * 50}px`, left: `${100 + col * 50}px` }}></div>);
+          }
+          continue;
+        }
+
+        const row_ = toShogiRowName(row);
+        const col_ = toShogiColumnName(col);
+        const is_newly_updated = this.state.previous_situation && !this.state.selected ? !same_entity(entity, this.state.previous_situation.board[row]![col]) : false;
+        const is_selected = this.state.selected?.type === "piece_on_board" ? this.state.selected.coord[1] === row_ && this.state.selected.coord[0] === col_ : false;
+        const piece_or_stone = <div
+          className={`${entity.side === "白" ? "white" : "black"} ${is_newly_updated ? "newly" : ""} ${is_selected ? "selected" : ""}`}
+          style={{ top: `${50 + row * 50}px`, left: `${100 + col * 50}px;` }}
+          onClick={entity.type === "碁" ? () => { } : () => this.select_piece_on_board([col_, row_])}
+        >{
+            getContentHTMLFromEntity(entity)
+          }
+        </div>;
+        board_content.push(piece_or_stone);
+      }
+    }
+
+    if (this.state.selected?.type === "piece_on_board") {
+      const entity_that_moves = get_entity_from_coord(this.state.situation.board, this.state.selected.coord)!;
+      if (entity_that_moves.type === "碁") {
+        throw new Error("碁石が動くはずがない");
+      }
+      for (let row = 0; row < 9; row++) {
+        for (let col = 0; col < 9; col++) {
+          const row_ = toShogiRowName(row);
+          const col_ = toShogiColumnName(col);
+          const to: Coordinate = [col_, row_];
+          const o: { to: Coordinate, from: Coordinate } = { to, from: this.state.selected.coord };
+          const is_castlable = (() => {
+            try {
+              throws_if_uncastlable(this.state.situation.board, o);
+              return true;
+            } catch (e) {
+              return false;
+            }
+          })();
+
+          const is_kumalable = (() => {
+            try {
+              throws_if_unkumalable(this.state.situation.board, o);
+              return true;
+            } catch (e) {
+              return false;
+            }
+          })();
+
+          if (can_move(this.state.situation.board, o) || is_castlable || is_kumalable) {
+            const possible_destination = <div
+              className="possible_destination"
+              style={{ top: `${50 + row * 50}px`, left: `${100 + col * 50}px;` }}
+              onClick={() => { this.move_piece(to, entity_that_moves) }}
+            ></div>;
+            board_content.push(possible_destination);
+          }
+        }
+      }
+    } else if (this.state.selected?.type === "piece_in_hand") {
+      const hand = this.state.selected.side === "白" ? this.state.situation.hand_of_white : this.state.situation.hand_of_black;
+      const selected_profession = hand[this.state.selected.index]!;
+      for (let row = 0; row < 9; row++) {
+        for (let col = 0; col < 9; col++) {
+          const row_ = toShogiRowName(row);
+          const col_ = toShogiColumnName(col);
+          const to: Coordinate = [col_, row_];
+
+          if (get_entity_from_coord(this.state.situation.board, to)) {
+            continue; // 駒がある場所には打てない
+          }
+
+          if (entry_is_forbidden(selected_profession, this.state.selected.side, to)) {
+            continue; // 桂馬と香車は打てる場所が限られる
+          }
+          const side = this.state.selected.side;
+          const possible_destination = <div
+            className="possible_destination" style={{ top: `${50 + row * 50}px`, left: `${100 + col * 50}px` }}
+            onClick={() => this.parachute(to, selected_profession, side)}
+          ></div>;
+          board_content.push(possible_destination);
+        }
+      }
+    } else if (this.state.selected?.type === "stone_in_hand") {
+      for (let row = 0; row < 9; row++) {
+        for (let col = 0; col < 9; col++) {
+          const row_ = toShogiRowName(row);
+          const col_ = toShogiColumnName(col);
+          const to: Coordinate = [col_, row_];
+
+          if (get_entity_from_coord(this.state.situation.board, to)) {
+            continue; // 駒がある場所には打てない
+          }
+
+          if (!can_place_stone(this.state.situation.board, this.state.selected.side, to)) {
+            continue; // 着手禁止点を除外する
+          }
+          const side = this.state.selected.side;
+          const possible_destination = <div
+            className='possible_destination'
+            style={{ top: `${50 + row * 50}px`, left: `${100 + col * 50}px` }}
+            onClick={() => this.place_stone(to, side)}
+          ></div>;
+          board_content.push(possible_destination);
+        }
+      }
+    }
+
+    this.state.situation.hand_of_white.forEach((prof, index) => {
+      const is_selected = this.state.selected?.type === "piece_in_hand" && this.state.selected.side === "白" && this.state.selected.index === index;
+      const piece_in_hand = <div
+        className={`${is_selected ? "selected" : ""} white`}
+        style={{ top: `${50 + index * 50}px`, left: `40px` }}
+        onClick={() => this.select_piece_in_hand(index, "白")}
+      >{prof}</div>;
+      board_content.push(piece_in_hand);
+    });
+
+    this.state.situation.hand_of_black.forEach((prof, index) => {
+      const is_selected = this.state.selected?.type === "piece_in_hand" && this.state.selected.side === "黒" && this.state.selected.index === index;
+      const piece_in_hand = <div
+        className={`${is_selected ? "selected" : ""} black`}
+        style={{ top: `${450 - index * 50}px`, left: `586px` }}
+        onClick={() => this.select_piece_in_hand(index, "黒")}
+      >{prof}</div>;
+      board_content.push(piece_in_hand);
+    });
+
+    // 棋譜の最後が自分の動きで終わっているなら、碁石を置くオプションを表示する
+    const text = (document.getElementById("history")! as HTMLTextAreaElement).value;
+    const moves = parse_cursored(text);
+    const final_move = moves.main[moves.main.length - 1];
+
+    if (final_move && !final_move.stone_to) {
+      if (final_move.piece_phase.side === "白") {
+        const is_selected = this.state.selected?.type === "stone_in_hand" && this.state.selected.side === "白";
+        const stone_in_hand = <div
+          className={`${is_selected ? "selected" : ""} white`}
+          style={{ top: `${50 - 1 * 50}px`, left: `586px` }}
+          onClick={() => this.select_stone_in_hand("白")}
+        ></div>;
+        board_content.push(stone_in_hand);
+      } else {
+        const is_selected = this.state.selected?.type === "stone_in_hand" && this.state.selected.side === "黒";
+        const stone_in_hand = <div
+          className={`${is_selected ? "selected" : ""} black`}
+          style={{ top: `${450 + 1 * 50}px`, left: `40px` }}
+          onClick={() => this.select_stone_in_hand("黒")}
+        ></div>;
+        board_content.push(stone_in_hand);
+      }
+    }
+
     return (
       <div>
         <Background />
-        <Board />
+        <div id="board">{board_content}</div>
         <History />
-        <HistoryLoadButton />
+        <button id="load_history" onClick={this.load_history} style={{ left: "660px", top: "520px", position: "absolute" }}>棋譜を読み込む</button>
         <HistoryForwardButton />
         <HistoryBackwardButton />
         <BWCheckBox />
