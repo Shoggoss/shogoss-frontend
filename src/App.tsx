@@ -37,26 +37,15 @@ class Background extends React.Component {
   }
 }
 
-function App() {
-  return (
-    <div id="App">
-      <span id="forkongithub"><a target="_blank" rel="noopener noreferrer" href="https://github.com/Shoggoss">Fork me on
-        GitHub</a></span>
-      <h2>ShoGoSs 棋譜検証・解釈機</h2>
-      <ul style={{ fontSize: "80%" }}>
-        <li>ゲーム作者: <a target="_blank" rel="noopener noreferrer"
-          href="https://twitter.com/oga_pleconia">@oga_pleconia</a></li>
-        <li><a target="_blank" rel="noopener noreferrer"
-          href="https://shogos-app.web.app">手動オンライン対戦盤</a>（ルールもここから参照できます）</li>
-        <li>このサイトを実装した人: <a target="_blank" rel="noopener noreferrer" href="https://twitter.com/hsjoihs">@hsjoihs</a>
-        </li>
-        <li><a target="_blank" rel="noopener noreferrer"
-          href="https://github.com/Shoggoss/shogoss-parser/blob/main/README.md">棋譜の書き方の細則</a></li>
-      </ul>
-      <div id="main" style={{ position: "relative" }}>
-        <Background />
-        <Board />
-        <textarea id="history" style={{ width: "300px", height: "500px", position: "absolute", left: "660px" }}>{`{|▲７五ポ７四 
+interface HistoryProps {
+  history: string;
+}
+
+class History extends React.Component<{}, HistoryProps> {
+  constructor(props: HistoryProps) {
+    super(props)
+    this.state = {
+      history: `{|▲７五ポ７四 
 △３四ナ１四 
 ▲６五ポ２五 
 △１一キ１五 
@@ -120,7 +109,34 @@ function App() {
 △８五ル８九
 ▲９六金９二 
 △９六香８六 
-▲３二銀７二}`}</textarea>
+▲３二銀７二}`};
+  }
+  render() {
+    const history = this.state.history;
+    return <textarea id="history" style={{ width: "300px", height: "500px", position: "absolute", left: "660px" }}>{history}</textarea>
+  }
+}
+
+function App() {
+  return (
+    <div id="App">
+      <span id="forkongithub"><a target="_blank" rel="noopener noreferrer" href="https://github.com/Shoggoss">Fork me on
+        GitHub</a></span>
+      <h2>ShoGoSs 棋譜検証・解釈機</h2>
+      <ul style={{ fontSize: "80%" }}>
+        <li>ゲーム作者: <a target="_blank" rel="noopener noreferrer"
+          href="https://twitter.com/oga_pleconia">@oga_pleconia</a></li>
+        <li><a target="_blank" rel="noopener noreferrer"
+          href="https://shogos-app.web.app">手動オンライン対戦盤</a>（ルールもここから参照できます）</li>
+        <li>このサイトを実装した人: <a target="_blank" rel="noopener noreferrer" href="https://twitter.com/hsjoihs">@hsjoihs</a>
+        </li>
+        <li><a target="_blank" rel="noopener noreferrer"
+          href="https://github.com/Shoggoss/shogoss-parser/blob/main/README.md">棋譜の書き方の細則</a></li>
+      </ul>
+      <div id="main" style={{ position: "relative" }}>
+        <Background />
+        <Board />
+        <History />
         <button id="load_history" style={{ left: "660px", top: "520px", position: "absolute" }}>棋譜を読み込む</button>
         <button id="forward" style={{ left: "334px", top: "500px", position: "absolute" }}>一手進む→</button>
         <button id="backward" style={{ left: "228px", top: "500px", position: "absolute" }} disabled>←一手戻る</button>
