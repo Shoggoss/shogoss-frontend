@@ -1,5 +1,4 @@
-import { can_move, can_place_stone, ChessEntity, Coordinate, Entity, entry_is_forbidden, get_initial_state, KingEntity, main, Move, ShogiColumnName, ShogiEntity, ShogiRowName, Side, Situation, throws_if_uncastlable, throws_if_unkumalable, UnpromotedShogiProfession } from "shogoss-core";
-import { backward_history, forward_history, parse_cursored, take_until_first_cursor } from "shogoss-frontend-gametree-parser";
+import { Coordinate, Entity, get_initial_state, main, Move, ShogiColumnName, ShogiRowName } from "shogoss-core";
 export function main_(moves: Move[]) {
     try {
         return main(moves);

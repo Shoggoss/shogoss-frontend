@@ -146,12 +146,14 @@ class BWCheckBox extends React.Component<{}, BWCheckBoxProps> {
   }
   render(): React.ReactNode {
     return <label style={{ top: "-30px", left: "720px", position: "absolute" }}><input type="checkbox" id="hanzi_black_white" checked={this.state.checked} /> 「黒」「白」で表示</label>
-
   }
 }
 
 interface GameProps {
   history: string;
+  bw_checkbox_checked: boolean;
+  forward_button_disabled: boolean;
+  backward_button_disabled: boolean;
   situation: Situation,
   previous_situation: Situation | null,
   selected: null | { type: "piece_on_board", coord: Coordinate } | { type: "piece_in_hand", index: number, side: Side } | { type: "stone_in_hand", side: Side };
@@ -176,9 +178,9 @@ class Game extends React.Component<{}, GameProps> {
 
   load_history() {
     this.setState({ selected: null });
-    const text = (document.getElementById("history")! as HTMLTextAreaElement).value;
-    (document.getElementById("forward")! as HTMLButtonElement).disabled = forward_history(text) === null;
-    (document.getElementById("backward")! as HTMLButtonElement).disabled = backward_history(text) === null;
+    const text = this.state.history;
+    this.setState({ forward_button_disabled: forward_history(text) === null });
+    this.setState({ backward_button_disabled: backward_history(text) === null });
     const moves = parse_cursored(text);
     try {
       const state = main_(moves.main);
@@ -208,7 +210,7 @@ class Game extends React.Component<{}, GameProps> {
   append_and_load(notation: string, text: string) {
     text = text.trimEnd();
     text += (text ? "　" : "") + notation;
-    (document.getElementById("history")! as HTMLTextAreaElement).value = text;
+    this.setState({ history: text });
     this.load_history();
     return text;
   }
@@ -218,7 +220,7 @@ class Game extends React.Component<{}, GameProps> {
       throw new Error("should not happen");
     }
 
-    let text = (document.getElementById("history")! as HTMLTextAreaElement).value;
+    let text = this.state.history;
     const moves = parse_cursored(text);
     if (moves.unevaluated.length > 0) {
       if (!window.confirm("以降の局面が破棄されます。よろしいですか？（将来的には、局面を破棄せず分岐する機能を足したいと思っています）")) {
@@ -282,7 +284,7 @@ class Game extends React.Component<{}, GameProps> {
   }
 
   parachute(to: Coordinate, prof: UnpromotedShogiProfession, side: Side) {
-    let text = (document.getElementById("history")! as HTMLTextAreaElement).value;
+    let text = this.state.history;
     const moves = parse_cursored(text);
     if (moves.unevaluated.length > 0) {
       if (!window.confirm("以降の局面が破棄されます。よろしいですか？（将来的には、局面を破棄せず分岐する機能を足したいと思っています）")) {
@@ -331,7 +333,7 @@ class Game extends React.Component<{}, GameProps> {
   }
 
   place_stone(to: Coordinate, side: Side) {
-    let text = (document.getElementById("history")! as HTMLTextAreaElement).value;
+    let text = this.state.history;
     const moves = parse_cursored(text);
     if (moves.unevaluated.length > 0) {
       if (!window.confirm("以降の局面が破棄されます。よろしいですか？（将来的には、局面を破棄せず分岐する機能を足したいと思っています）")) {
@@ -359,7 +361,7 @@ class Game extends React.Component<{}, GameProps> {
 
     text = text.trimEnd();
     text += stone_coord;
-    (document.getElementById("history")! as HTMLTextAreaElement).value = text;
+    this.setState({ history: text });
     this.load_history();
     return text;
   }
@@ -372,12 +374,14 @@ class Game extends React.Component<{}, GameProps> {
 
 
   render() {
-    if ((document.getElementById("hanzi_black_white") as HTMLInputElement).checked) {
-      (document.getElementById("history")! as HTMLTextAreaElement).value =
-        (document.getElementById("history")! as HTMLTextAreaElement).value.replace(/[黒▲☗]/g, "黒").replace(/[白△☖]/g, "白");
+    if (this.state.bw_checkbox_checked) {
+      this.setState({
+        history: this.state.history.replace(/[黒▲☗]/g, "黒").replace(/[白△☖]/g, "白")
+      });
     } else {
-      (document.getElementById("history")! as HTMLTextAreaElement).value =
-        (document.getElementById("history")! as HTMLTextAreaElement).value.replace(/[黒▲☗]/g, "▲").replace(/[白△☖]/g, "△");
+      this.setState({
+        history: this.state.history.replace(/[黒▲☗]/g, "▲").replace(/[白△☖]/g, "△")
+      });
     }
 
     const board_content: JSX.Element[] = [];
@@ -516,7 +520,7 @@ class Game extends React.Component<{}, GameProps> {
     });
 
     // 棋譜の最後が自分の動きで終わっているなら、碁石を置くオプションを表示する
-    const text = (document.getElementById("history")! as HTMLTextAreaElement).value;
+    const text = this.state.history;
     const moves = parse_cursored(text);
     const final_move = moves.main[moves.main.length - 1];
 
