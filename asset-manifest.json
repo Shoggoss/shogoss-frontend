@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/shogoss-frontend/static/css/main.6f62bb04.css",
+    "main.js": "/shogoss-frontend/static/js/main.b87df329.js",
+    "static/js/787.b68d35dd.chunk.js": "/shogoss-frontend/static/js/787.b68d35dd.chunk.js",
+    "index.html": "/shogoss-frontend/index.html",
+    "main.6f62bb04.css.map": "/shogoss-frontend/static/css/main.6f62bb04.css.map",
+    "main.b87df329.js.map": "/shogoss-frontend/static/js/main.b87df329.js.map",
+    "787.b68d35dd.chunk.js.map": "/shogoss-frontend/static/js/787.b68d35dd.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.6f62bb04.css",
+    "static/js/main.b87df329.js"
+  ]
+}
