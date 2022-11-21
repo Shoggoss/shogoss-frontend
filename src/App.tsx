@@ -9,15 +9,19 @@ import './App.css';
 class Background extends React.Component {
   render() {
     const horizontal_lines = Array.from({ length: 10 }, (_, i) => <div
+      key={`horizontal_lines_${i}`}
       style={{ top: `${45 + i * 50}px`, left: "95px", height: "2px", width: "452px", backgroundColor: "black", position: "absolute" }}>
     </div>);
     const vertical_lines = Array.from({ length: 10 }, (_, i) => <div
+      key={`vertical_lines_${i}`}
       style={{ top: "45px", left: `${95 + i * 50}px`, height: "452px", width: "2px", backgroundColor: "black", position: "absolute" }}>
     </div>)
     const row_labels = Array.from({ length: 10 }, (_, i) => <div
+      key={`row_labels_${i}`}
       style={{ top: `${50 + i * 50}px`, left: "555px", position: "absolute", width: "40px", lineHeight: "40px" }}>{toShogiRowName(i)}
     </div>);
     const column_labels = Array.from({ length: 10 }, (_, i) => <div
+      key={`column_labels_${i}`}
       style={{ top: "20px", left: `${100 + i * 50}px`, position: "absolute", width: "40px", textAlign: "center" }}>{toShogiColumnName(i)}
     </div>);
     return [...horizontal_lines, ...vertical_lines, ...column_labels, ...row_labels];
@@ -435,7 +439,7 @@ class Game extends React.Component<{}, GameProps> {
         const entity = this.state.situation.board[row]![col];
         if (entity == null) {
           if (this.state.previous_situation?.board[row]![col] && !this.state.selected) {
-            board_content.push(<div className="newly_vacated" style={{ top: `${50 + row * 50}px`, left: `${100 + col * 50}px` }}></div>);
+            board_content.push(<div key={`newly_vacated_${row}_${col}`} className="newly_vacated" style={{ top: `${50 + row * 50}px`, left: `${100 + col * 50}px` }}></div>);
           }
           continue;
         }
@@ -445,6 +449,7 @@ class Game extends React.Component<{}, GameProps> {
         const is_newly_updated = this.state.previous_situation && !this.state.selected ? !same_entity(entity, this.state.previous_situation.board[row]![col]) : false;
         const is_selected = this.state.selected?.type === "piece_on_board" ? this.state.selected.coord[1] === row_ && this.state.selected.coord[0] === col_ : false;
         const piece_or_stone = <div
+          key={`piece_or_stone_${row}_${col}`}
           className={`${entity.side === "白" ? "white" : "black"} ${is_newly_updated ? "newly" : ""} ${is_selected ? "selected" : ""}`}
           style={{ top: `${50 + row * 50}px`, left: `${100 + col * 50}px` }}
           onClick={entity.type === "碁" ? () => { } : () => this.select_piece_on_board([col_, row_])}
@@ -487,6 +492,7 @@ class Game extends React.Component<{}, GameProps> {
 
           if (can_move(this.state.situation.board, o) || is_castlable || is_kumalable) {
             const possible_destination = <div
+              key={`possible_destination_${row}_${col}`}
               className="possible_destination"
               style={{ top: `${50 + row * 50}px`, left: `${100 + col * 50}px` }}
               onClick={() => { this.move_piece(to, entity_that_moves) }}
@@ -513,6 +519,7 @@ class Game extends React.Component<{}, GameProps> {
           }
           const side = this.state.selected.side;
           const possible_destination = <div
+            key={`possible_destination_${row}_${col}`}
             className="possible_destination" style={{ top: `${50 + row * 50}px`, left: `${100 + col * 50}px` }}
             onClick={() => this.parachute(to, selected_profession, side)}
           ></div>;
@@ -535,6 +542,7 @@ class Game extends React.Component<{}, GameProps> {
           }
           const side = this.state.selected.side;
           const possible_destination = <div
+            key={`possible_destination_${row}_${col}`}
             className='possible_destination'
             style={{ top: `${50 + row * 50}px`, left: `${100 + col * 50}px` }}
             onClick={() => this.place_stone(to, side)}
@@ -547,6 +555,7 @@ class Game extends React.Component<{}, GameProps> {
     this.state.situation.hand_of_white.forEach((prof, index) => {
       const is_selected = this.state.selected?.type === "piece_in_hand" && this.state.selected.side === "白" && this.state.selected.index === index;
       const piece_in_hand = <div
+        key={`white_hand_${index}`}
         className={`${is_selected ? "selected" : ""} white`}
         style={{ top: `${50 + index * 50}px`, left: `40px` }}
         onClick={() => this.select_piece_in_hand(index, "白")}
@@ -557,6 +566,7 @@ class Game extends React.Component<{}, GameProps> {
     this.state.situation.hand_of_black.forEach((prof, index) => {
       const is_selected = this.state.selected?.type === "piece_in_hand" && this.state.selected.side === "黒" && this.state.selected.index === index;
       const piece_in_hand = <div
+        key={`black_hand_${index}`}
         className={`${is_selected ? "selected" : ""} black`}
         style={{ top: `${450 - index * 50}px`, left: `586px` }}
         onClick={() => this.select_piece_in_hand(index, "黒")}
@@ -573,6 +583,7 @@ class Game extends React.Component<{}, GameProps> {
       if (final_move.piece_phase.side === "白") {
         const is_selected = this.state.selected?.type === "stone_in_hand" && this.state.selected.side === "白";
         const stone_in_hand = <div
+          key="white_stone_in_hand"
           className={`${is_selected ? "selected" : ""} white`}
           style={{ top: `${50 - 1 * 50}px`, left: `586px` }}
           onClick={() => this.select_stone_in_hand("白")}
@@ -581,6 +592,7 @@ class Game extends React.Component<{}, GameProps> {
       } else {
         const is_selected = this.state.selected?.type === "stone_in_hand" && this.state.selected.side === "黒";
         const stone_in_hand = <div
+          key="black_stone_in_hand"
           className={`${is_selected ? "selected" : ""} black`}
           style={{ top: `${450 + 1 * 50}px`, left: `40px` }}
           onClick={() => this.select_stone_in_hand("黒")}
