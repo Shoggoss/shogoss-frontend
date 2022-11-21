@@ -1,8 +1,9 @@
-## 困りごと
+# shogoss-frontend
 
-棋譜を編集しようとした時点で反映されると困る（変数中に構文エラーが出てプログラムが落ちるので）
+## Website
+Located at https://shoggoss.github.io/shogoss-frontend/
 
-# Getting Started with Create React App
+## Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
