@@ -87,7 +87,8 @@ class BWCheckBox extends React.Component<BWCheckBoxProps, BWCheckBoxProps> {
 }
 
 interface GameProps {
-  history: string;
+  history_uncommitted: string; // テキストエリアと連携しており、構文エラーになっている場合がある
+  history_committed: string; // 常にパース可能な history が入っている
   bw_checkbox_checked: boolean;
   forward_button_disabled: boolean;
   backward_button_disabled: boolean;
@@ -121,7 +122,8 @@ class Game extends React.Component<{}, GameProps> {
     this.parachute = this.parachute.bind(this);
     this.place_stone = this.place_stone.bind(this);
     this.state = {
-      history: initial_history,
+      history_uncommitted: initial_history,
+      history_committed: initial_history,
       bw_checkbox_checked: false,
       selected: null,
       forward_button_disabled: false,
@@ -131,26 +133,26 @@ class Game extends React.Component<{}, GameProps> {
     };
   }
 
-  handleHistoryTextChange(history: string) {
-    this.setState({ history });
+  handleHistoryTextChange(history_uncommitted: string) {
+    this.setState({ history_uncommitted });
   }
 
   handleBWChange(bw_checkbox_checked: boolean) {
     this.setState({ bw_checkbox_checked });
     if (bw_checkbox_checked) {
       this.setState({
-        history: this.state.history.replace(/[黒▲☗]/g, "黒").replace(/[白△☖]/g, "白")
+        history_uncommitted: this.state.history_uncommitted.replace(/[黒▲☗]/g, "黒").replace(/[白△☖]/g, "白")
       });
     } else {
       this.setState({
-        history: this.state.history.replace(/[黒▲☗]/g, "▲").replace(/[白△☖]/g, "△")
+        history_uncommitted: this.state.history_uncommitted.replace(/[黒▲☗]/g, "▲").replace(/[白△☖]/g, "△")
       });
     }
   }
 
   load_history() {
     this.setState({ selected: null });
-    const text = this.state.history;
+    const text = this.state.history_uncommitted;
     this.setState({ forward_button_disabled: forward_history(text) === null });
     this.setState({ backward_button_disabled: backward_history(text) === null });
     const moves = parse_cursored(text);
@@ -163,11 +165,11 @@ class Game extends React.Component<{}, GameProps> {
       if (state.phase === "game_end") {
         alert(`勝者: ${state.victor}、理由: ${state.reason}`);
         this.setState({ situation: state.final_situation, previous_situation: previous_state });
-        this.render();
       } else {
         this.setState({ situation: state, previous_situation: previous_state });
-        this.render();
       }
+      this.setState({ history_committed: this.state.history_uncommitted });
+      this.render();
     } catch (e: unknown) {
       alert(e);
     }
@@ -182,7 +184,7 @@ class Game extends React.Component<{}, GameProps> {
   append_and_load(notation: string, text: string) {
     text = text.trimEnd();
     text += (text ? "　" : "") + notation;
-    this.setState({ history: text });
+    this.setState({ history_uncommitted: text });
     this.load_history();
     return text;
   }
@@ -192,7 +194,7 @@ class Game extends React.Component<{}, GameProps> {
       throw new Error("should not happen");
     }
 
-    let text = this.state.history;
+    let text = this.state.history_committed;
     const moves = parse_cursored(text);
     if (moves.unevaluated.length > 0) {
       if (!window.confirm("以降の局面が破棄されます。よろしいですか？（将来的には、局面を破棄せず分岐する機能を足したいと思っています）")) {
@@ -227,6 +229,7 @@ class Game extends React.Component<{}, GameProps> {
     } catch (e) {
       // 曖昧性が出た
       text = this.append_and_load(full_notation, text);
+      this.setState({ history_committed: text });
       return;
     }
 
@@ -234,6 +237,7 @@ class Game extends React.Component<{}, GameProps> {
     // ただし、ここで「二ポの可能性は無視して曖昧性を考える」という仕様が牙をむく
     if (entity_that_moves.prof !== "ポ") {
       text = this.append_and_load(loose_notation, text);
+      this.setState({ history_committed: text });
       return;
     } else {
       const loose = main_(parse_cursored(text + loose_notation).main);
@@ -242,21 +246,24 @@ class Game extends React.Component<{}, GameProps> {
       // これは「二ポです」を知らせるために始点明記が必要
       if (loose.phase === "resolved" && full.phase === "game_end") {
         text = this.append_and_load(full_notation, text);
+        this.setState({ history_committed: text });
         return;
       } else if (loose.phase === "resolved" && full.phase === "resolved") {
         // 移動したポーンが即座に碁で取られて二ポが解消するパターンの場合には、「直進」との競合が発生することはない
         // したがって、この場合は直進を採用して問題ないはず
         text = this.append_and_load(loose_notation, text);
+        this.setState({ history_committed: text });
         return;
       } else {
         // もうよくわかんないから full notation で書いておきます
         text = this.append_and_load(full_notation, text);
+        this.setState({ history_committed: text });
       }
     }
   }
 
   parachute(to: Coordinate, prof: UnpromotedShogiProfession, side: Side) {
-    let text = this.state.history;
+    let text = this.state.history_committed;
     const moves = parse_cursored(text);
     if (moves.unevaluated.length > 0) {
       if (!window.confirm("以降の局面が破棄されます。よろしいですか？（将来的には、局面を破棄せず分岐する機能を足したいと思っています）")) {
@@ -305,7 +312,7 @@ class Game extends React.Component<{}, GameProps> {
   }
 
   place_stone(to: Coordinate, side: Side) {
-    let text = this.state.history;
+    let text = this.state.history_committed;
     const moves = parse_cursored(text);
     if (moves.unevaluated.length > 0) {
       if (!window.confirm("以降の局面が破棄されます。よろしいですか？（将来的には、局面を破棄せず分岐する機能を足したいと思っています）")) {
@@ -333,7 +340,7 @@ class Game extends React.Component<{}, GameProps> {
 
     text = text.trimEnd();
     text += stone_coord;
-    this.setState({ history: text });
+    this.setState({ history_committed: text });
     this.load_history();
     return text;
   }
@@ -488,7 +495,7 @@ class Game extends React.Component<{}, GameProps> {
     });
 
     // 棋譜の最後が自分の動きで終わっているなら、碁石を置くオプションを表示する
-    const text = this.state.history;
+    const text = this.state.history_committed;
     const moves = parse_cursored(text);
     const final_move = moves.main[moves.main.length - 1];
 
@@ -518,7 +525,7 @@ class Game extends React.Component<{}, GameProps> {
       <div>
         <Background />
         <div id="board">{board_content}</div>
-        <History history={this.state.history} onHistoryTextChange={this.handleHistoryTextChange} />
+        <History history={this.state.history_uncommitted} onHistoryTextChange={this.handleHistoryTextChange} />
         <button id="load_history" onClick={this.load_history} style={{ left: "660px", top: "520px", position: "absolute" }}>棋譜を読み込む</button>
         <HistoryForwardButton disabled={this.state.forward_button_disabled} />
         <HistoryBackwardButton disabled={this.state.backward_button_disabled} />
