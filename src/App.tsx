@@ -53,12 +53,12 @@ class History extends React.Component<HistoryProps, HistoryProps> {
   }
 }
 
-function HistoryForwardButton(props: { disabled: boolean }) {
-  return <button id="forward" disabled={props.disabled} style={{ left: "334px", top: "500px", position: "absolute" }}>一手進む→</button>
+function HistoryForwardButton(props: { disabled: boolean, onClick: () => void }) {
+  return <button id="forward" onClick={props.onClick} disabled={props.disabled} style={{ left: "334px", top: "500px", position: "absolute" }}>一手進む→</button>
 }
 
-function HistoryBackwardButton(props: { disabled: boolean }) {
-  return <button id="backward" style={{ left: "228px", top: "500px", position: "absolute" }} disabled={props.disabled}>←一手戻る</button>
+function HistoryBackwardButton(props: { disabled: boolean, onClick: () => void }) {
+  return <button id="backward" onClick={props.onClick} style={{ left: "228px", top: "500px", position: "absolute" }} disabled={props.disabled}>←一手戻る</button>
 }
 
 interface BWCheckBoxProps {
@@ -148,6 +148,8 @@ class Game extends React.Component<{}, GameProps> {
     this.move_piece = this.move_piece.bind(this);
     this.parachute = this.parachute.bind(this);
     this.place_stone = this.place_stone.bind(this);
+    this.forward = this.forward.bind(this);
+    this.backward = this.backward.bind(this);
     this.state = {
       history_uncommitted: initial_history,
       history_committed: initial_history,
@@ -384,6 +386,28 @@ class Game extends React.Component<{}, GameProps> {
     this.setState(state => { this.render(); });
   }
 
+  forward() {
+    this.setState({ selected: null });
+    const text = this.state.history_uncommitted;
+    const new_history = forward_history(text);
+    if (new_history) {
+      this.setState({ history_committed: new_history });
+      this.setState({ history_uncommitted: new_history });
+      this.load_history_from_text(new_history);
+    }
+  }
+
+  backward() {
+    this.setState({ selected: null });
+    const text = this.state.history_uncommitted;
+    const new_history = backward_history(text);
+    if (new_history) {
+      this.setState({ history_committed: new_history });
+      this.setState({ history_uncommitted: new_history });
+      this.load_history_from_text(new_history);
+    }
+  }
+
 
   render() {
     const board_content: JSX.Element[] = [];
@@ -550,8 +574,8 @@ class Game extends React.Component<{}, GameProps> {
         </div>
         <History history={this.state.history_uncommitted} onHistoryTextChange={this.handleHistoryTextChange} />
         <button id="load_history" onClick={this.load_history} style={{ left: "660px", top: "520px", position: "absolute" }}>棋譜を読み込む</button>
-        <HistoryForwardButton disabled={this.state.forward_button_disabled} />
-        <HistoryBackwardButton disabled={this.state.backward_button_disabled} />
+        <HistoryForwardButton onClick={this.forward} disabled={this.state.forward_button_disabled} />
+        <HistoryBackwardButton onClick={this.backward} disabled={this.state.backward_button_disabled} />
         <BWCheckBox checked={this.state.bw_checkbox_checked} onBWChange={this.handleBWChange} />
       </div>
     )
