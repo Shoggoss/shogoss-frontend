@@ -1,5 +1,5 @@
 import React from 'react';
-import { can_move, can_place_stone, ChessEntity, Coordinate, Entity, entry_is_forbidden, get_initial_state, KingEntity, ShogiEntity, Side, Situation, throws_if_uncastlable, throws_if_unkumalable, UnpromotedShogiProfession } from "shogoss-core";
+import { can_move, can_place_stone, ChessEntity, Coordinate, Entity, entry_is_forbidden, get_initial_state, Hand, KingEntity, ShogiEntity, Side, Situation, throws_if_uncastlable, throws_if_unkumalable, UnpromotedShogiProfession } from "shogoss-core";
 import { backward_history, forward_history, parse_cursored, take_until_first_cursor } from "shogoss-frontend-gametree-parser";
 import { main_, toShogiColumnName, toShogiRowName, same_entity, get_entity_from_coord, initial_history } from './Pure'
 
@@ -86,6 +86,8 @@ class BWCheckBox extends React.Component<BWCheckBoxProps, BWCheckBoxProps> {
   }
 }
 
+type Selection = { type: "piece_on_board", coord: Coordinate } | { type: "piece_in_hand", index: number, side: Side } | { type: "stone_in_hand", side: Side };
+
 interface GameProps {
   history_uncommitted: string; // テキストエリアと連携しており、構文エラーになっている場合がある
   history_committed: string; // 常にパース可能な history が入っている
@@ -94,7 +96,7 @@ interface GameProps {
   backward_button_disabled: boolean;
   situation: Situation,
   previous_situation: Situation | null,
-  selected: null | { type: "piece_on_board", coord: Coordinate } | { type: "piece_in_hand", index: number, side: Side } | { type: "stone_in_hand", side: Side };
+  selected: Selection | null;
 }
 
 
@@ -497,30 +499,6 @@ class Game extends React.Component<{}, GameProps> {
       }
     }
 
-    const white_hand_content = this.state.situation.hand_of_white.map((prof, index) =>
-      <HandPieceOfWhite
-        index={index}
-        is_selected={this.state.selected?.type === "piece_in_hand"
-          && this.state.selected.side === "白"
-          && this.state.selected.index === index
-        }
-        onClick={() => this.select_piece_in_hand(index, "白")}
-        prof={prof}
-      />
-    );
-
-    const black_hand_content = this.state.situation.hand_of_black.map((prof, index) =>
-      <HandPieceOfBlack
-        index={index}
-        is_selected={this.state.selected?.type === "piece_in_hand"
-          && this.state.selected.side === "黒"
-          && this.state.selected.index === index
-        }
-        onClick={() => this.select_piece_in_hand(index, "黒")}
-        prof={prof}
-      />
-    );
-
     // 棋譜の最後が自分の動きで終わっているなら、碁石を置くオプションを表示する
     const text = this.state.history_committed;
     const moves = parse_cursored(text);
@@ -553,8 +531,16 @@ class Game extends React.Component<{}, GameProps> {
         <Background />
         <div id="field">
           <div>{board_content}</div>
-          <div id="white_hand">{white_hand_content}</div>
-          <div id="black_hand">{black_hand_content}</div>
+          <WhiteHand
+            selected={this.state.selected}
+            hand={this.state.situation.hand_of_white}
+            onClick={index => this.select_piece_in_hand(index, "白")}
+          />
+          <BlackHand
+            selected={this.state.selected}
+            hand={this.state.situation.hand_of_black}
+            onClick={index => this.select_piece_in_hand(index, "黒")}
+          />
         </div>
         <History history={this.state.history_uncommitted} onHistoryTextChange={this.handleHistoryTextChange} />
         <button id="load_history" onClick={this.load_history} style={{ left: "660px", top: "520px", position: "absolute" }}>棋譜を読み込む</button>
@@ -564,6 +550,42 @@ class Game extends React.Component<{}, GameProps> {
       </div>
     )
   }
+}
+
+interface HandProps {
+  hand: Hand
+  onClick: (index: number) => void,
+  selected: Selection | null
+}
+
+function WhiteHand(props: HandProps): JSX.Element {
+  const white_hand_content = props.hand.map((prof, index) =>
+    <HandPieceOfWhite
+      index={index}
+      is_selected={props.selected?.type === "piece_in_hand"
+        && props.selected.side === "白"
+        && props.selected.index === index
+      }
+      onClick={() => props.onClick(index)}
+      prof={prof}
+    />
+  );
+  return <div id="white_hand">{white_hand_content}</div>
+}
+
+function BlackHand(props: HandProps): JSX.Element {
+  const black_hand_content = props.hand.map((prof, index) =>
+    <HandPieceOfBlack
+      index={index}
+      is_selected={props.selected?.type === "piece_in_hand"
+        && props.selected.side === "黒"
+        && props.selected.index === index
+      }
+      onClick={() => props.onClick(index)}
+      prof={prof}
+    />
+  );
+  return <div id="black_hand">{black_hand_content}</div>
 }
 
 function App() {
