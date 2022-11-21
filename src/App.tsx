@@ -194,6 +194,15 @@ class Game extends React.Component<{}, GameProps> {
   constructor(props: GameProps) {
     super(props);
     this.handleHistoryTextChange = this.handleHistoryTextChange.bind(this);
+    this.handleBWChange = this.handleBWChange.bind(this);
+    this.load_history = this.load_history.bind(this);
+    this.select_piece_on_board = this.select_piece_on_board.bind(this);
+    this.select_piece_in_hand = this.select_piece_in_hand.bind(this);
+    this.select_stone_in_hand = this.select_stone_in_hand.bind(this);
+    this.append_and_load = this.append_and_load.bind(this);
+    this.move_piece = this.move_piece.bind(this);
+    this.parachute = this.parachute.bind(this);
+    this.place_stone = this.place_stone.bind(this);
     this.state = {
       history: initial_history,
       bw_checkbox_checked: false,
