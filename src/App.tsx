@@ -178,8 +178,12 @@ class Game extends React.Component<{}, GameProps> {
   }
 
   load_history() {
-    this.setState({ selected: null });
     const text = this.state.history_uncommitted;
+    this.load_history_from_text(text);
+  }
+
+  load_history_from_text(text: string) {
+    this.setState({ selected: null });
     this.setState({ forward_button_disabled: forward_history(text) === null });
     this.setState({ backward_button_disabled: backward_history(text) === null });
     const moves = parse_cursored(text);
@@ -195,8 +199,8 @@ class Game extends React.Component<{}, GameProps> {
       } else {
         this.setState({ situation: state, previous_situation: previous_state });
       }
-      this.setState({ history_committed: this.state.history_uncommitted });
-      this.render();
+      this.setState({ history_committed: text });
+      this.setState(state => { this.render(); });
     } catch (e: unknown) {
       alert(e);
     }
@@ -205,14 +209,15 @@ class Game extends React.Component<{}, GameProps> {
   select_piece_on_board(coord: Coordinate) {
     this.setState({ selected: { type: "piece_on_board", coord } });
     this.setState({ previous_situation: null });
-    this.render();
+    this.setState(state => { this.render(); });
   }
 
   append_and_load(notation: string, text: string) {
     text = text.trimEnd();
     text += (text ? "　" : "") + notation;
     this.setState({ history_uncommitted: text });
-    this.load_history();
+    this.setState({ history_committed: text });
+    this.load_history_from_text(text);
     return text;
   }
 
@@ -227,7 +232,7 @@ class Game extends React.Component<{}, GameProps> {
       if (!window.confirm("以降の局面が破棄されます。よろしいですか？（将来的には、局面を破棄せず分岐する機能を足したいと思っています）")) {
         this.setState({ selected: null });
         this.setState({ previous_situation: null });
-        this.render();
+        this.setState(state => { this.render(); });
         return null;
       }
     }
@@ -244,7 +249,7 @@ class Game extends React.Component<{}, GameProps> {
       alert(e);
       this.setState({ selected: null });
       this.setState({ previous_situation: null });
-      this.render();
+      this.setState(state => { this.render(); });
       return;
     }
 
@@ -296,7 +301,7 @@ class Game extends React.Component<{}, GameProps> {
       if (!window.confirm("以降の局面が破棄されます。よろしいですか？（将来的には、局面を破棄せず分岐する機能を足したいと思っています）")) {
         this.setState({ selected: null });
         this.setState({ previous_situation: null });
-        this.render();
+        this.setState(state => { this.render(); });
         return null;
       }
     }
@@ -312,7 +317,7 @@ class Game extends React.Component<{}, GameProps> {
       alert(e);
       this.setState({ selected: null });
       this.setState({ previous_situation: null });
-      this.render();
+      this.setState(state => { this.render(); });
       return;
     }
 
@@ -335,7 +340,7 @@ class Game extends React.Component<{}, GameProps> {
   select_piece_in_hand(index: number, side: Side) {
     this.setState({ selected: { type: "piece_in_hand", index, side } });
     this.setState({ previous_situation: null })
-    this.render();
+    this.setState(state => { this.render(); });
   }
 
   place_stone(to: Coordinate, side: Side) {
@@ -345,7 +350,7 @@ class Game extends React.Component<{}, GameProps> {
       if (!window.confirm("以降の局面が破棄されます。よろしいですか？（将来的には、局面を破棄せず分岐する機能を足したいと思っています）")) {
         this.setState({ selected: null });
         this.setState({ previous_situation: null });
-        this.render();
+        this.setState(state => { this.render(); });
         return null;
       }
     }
@@ -361,21 +366,22 @@ class Game extends React.Component<{}, GameProps> {
       alert(e);
       this.setState({ selected: null });
       this.setState({ previous_situation: null });
-      this.render();
+      this.setState(state => { this.render(); });
       return;
     }
 
     text = text.trimEnd();
     text += stone_coord;
     this.setState({ history_committed: text });
-    this.load_history();
+    this.setState({ history_uncommitted: text });
+    this.load_history_from_text(text);
     return text;
   }
 
   select_stone_in_hand(side: Side) {
     this.setState({ selected: { type: "stone_in_hand", side } });
     this.setState({ previous_situation: null });
-    this.render();
+    this.setState(state => { this.render(); });
   }
 
 
