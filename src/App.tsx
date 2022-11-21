@@ -108,6 +108,31 @@ function getContentHTMLFromEntity(entity: Entity): JSX.Element {
   return <span>{entity.prof}</span>
 }
 
+interface PieceInHandProps {
+  index: number,
+  is_selected: boolean,
+  onClick: () => void,
+  prof: UnpromotedShogiProfession
+}
+
+function HandPieceOfWhite(props: PieceInHandProps): JSX.Element {
+  return <div
+    key={`white_hand_${props.index}`}
+    className={`${props.is_selected ? "selected" : ""} white`}
+    style={{ top: `${50 + props.index * 50}px`, left: `40px` }}
+    onClick={props.onClick}
+  >{props.prof}</div>
+}
+
+function HandPieceOfBlack(props: PieceInHandProps): JSX.Element {
+  return <div
+    key={`black_hand_${props.index}`}
+    className={`${props.is_selected ? "selected" : ""} black`}
+    style={{ top: `${450 - props.index * 50}px`, left: `586px` }}
+    onClick={props.onClick}
+  >{props.prof}</div>
+}
+
 class Game extends React.Component<{}, GameProps> {
   constructor(props: GameProps) {
     super(props);
@@ -472,27 +497,29 @@ class Game extends React.Component<{}, GameProps> {
       }
     }
 
-    this.state.situation.hand_of_white.forEach((prof, index) => {
-      const is_selected = this.state.selected?.type === "piece_in_hand" && this.state.selected.side === "白" && this.state.selected.index === index;
-      const piece_in_hand = <div
-        key={`white_hand_${index}`}
-        className={`${is_selected ? "selected" : ""} white`}
-        style={{ top: `${50 + index * 50}px`, left: `40px` }}
+    const white_hand_content = this.state.situation.hand_of_white.map((prof, index) =>
+      <HandPieceOfWhite
+        index={index}
+        is_selected={this.state.selected?.type === "piece_in_hand"
+          && this.state.selected.side === "白"
+          && this.state.selected.index === index
+        }
         onClick={() => this.select_piece_in_hand(index, "白")}
-      >{prof}</div>;
-      board_content.push(piece_in_hand);
-    });
+        prof={prof}
+      />
+    );
 
-    this.state.situation.hand_of_black.forEach((prof, index) => {
-      const is_selected = this.state.selected?.type === "piece_in_hand" && this.state.selected.side === "黒" && this.state.selected.index === index;
-      const piece_in_hand = <div
-        key={`black_hand_${index}`}
-        className={`${is_selected ? "selected" : ""} black`}
-        style={{ top: `${450 - index * 50}px`, left: `586px` }}
+    const black_hand_content = this.state.situation.hand_of_black.map((prof, index) =>
+      <HandPieceOfBlack
+        index={index}
+        is_selected={this.state.selected?.type === "piece_in_hand"
+          && this.state.selected.side === "黒"
+          && this.state.selected.index === index
+        }
         onClick={() => this.select_piece_in_hand(index, "黒")}
-      >{prof}</div>;
-      board_content.push(piece_in_hand);
-    });
+        prof={prof}
+      />
+    );
 
     // 棋譜の最後が自分の動きで終わっているなら、碁石を置くオプションを表示する
     const text = this.state.history_committed;
@@ -524,7 +551,11 @@ class Game extends React.Component<{}, GameProps> {
     return (
       <div>
         <Background />
-        <div id="board">{board_content}</div>
+        <div id="field">
+          <div>{board_content}</div>
+          <div id="white_hand">{white_hand_content}</div>
+          <div id="black_hand">{black_hand_content}</div>
+        </div>
         <History history={this.state.history_uncommitted} onHistoryTextChange={this.handleHistoryTextChange} />
         <button id="load_history" onClick={this.load_history} style={{ left: "660px", top: "520px", position: "absolute" }}>棋譜を読み込む</button>
         <HistoryForwardButton disabled={this.state.forward_button_disabled} />
