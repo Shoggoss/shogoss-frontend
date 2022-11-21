@@ -1,5 +1,5 @@
 import React from 'react';
-import { can_move, can_place_stone, ChessEntity, Coordinate, Entity, entry_is_forbidden, KingEntity, ShogiEntity, Side, Situation, throws_if_uncastlable, throws_if_unkumalable, UnpromotedShogiProfession } from "shogoss-core";
+import { can_move, can_place_stone, ChessEntity, Coordinate, Entity, entry_is_forbidden, get_initial_state, KingEntity, ShogiEntity, Side, Situation, throws_if_uncastlable, throws_if_unkumalable, UnpromotedShogiProfession } from "shogoss-core";
 import { backward_history, forward_history, parse_cursored, take_until_first_cursor } from "shogoss-frontend-gametree-parser";
 import { main_, toShogiColumnName, toShogiRowName, same_entity, get_entity_from_coord } from './Pure'
 
@@ -26,13 +26,10 @@ class Background extends React.Component {
 
 interface HistoryProps {
   history: string;
+  onHistoryTextChange: (s: string) => void;
 }
 
-class History extends React.Component<{}, HistoryProps> {
-  constructor(props: HistoryProps) {
-    super(props)
-    this.state = {
-      history: `{|▲７五ポ７四 
+const initial_history: string = `{|▲７五ポ７四 
 △３四ナ１四 
 ▲６五ポ２五 
 △１一キ１五 
@@ -96,11 +93,25 @@ class History extends React.Component<{}, HistoryProps> {
 △８五ル８九
 ▲９六金９二 
 △９六香８六 
-▲３二銀７二}`};
+▲３二銀７二}`;
+
+class History extends React.Component<HistoryProps, HistoryProps> {
+  constructor(props: HistoryProps) {
+    super(props)
+    this.handleHistoryTextChange = this.handleHistoryTextChange.bind(this);
   }
+
+  handleHistoryTextChange(e: any) {
+    this.props.onHistoryTextChange(e.target.value);
+  }
+
   render() {
-    const history = this.state.history;
-    return <textarea id="history" style={{ width: "300px", height: "500px", position: "absolute", left: "660px" }}>{history}</textarea>
+    return <textarea
+      id="history"
+      style={{ width: "300px", height: "500px", position: "absolute", left: "660px" }}
+      value={this.props.history}
+      onChange={this.handleHistoryTextChange}
+    ></textarea>
   }
 }
 
@@ -110,13 +121,13 @@ interface HistoryForwardButtonProps {
   disabled: boolean
 }
 
-class HistoryForwardButton extends React.Component<{}, HistoryForwardButtonProps> {
+class HistoryForwardButton extends React.Component<HistoryForwardButtonProps, HistoryForwardButtonProps> {
   constructor(props: HistoryForwardButtonProps) {
     super(props);
     this.state = { disabled: false };
   }
   render(): React.ReactNode {
-    return <button id="forward" disabled={this.state.disabled} style={{ left: "334px", top: "500px", position: "absolute" }}>一手進む→</button>
+    return <button id="forward" disabled={this.props.disabled} style={{ left: "334px", top: "500px", position: "absolute" }}>一手進む→</button>
   }
 }
 
@@ -125,27 +136,36 @@ interface HistoryBackwardButtonProps {
   disabled: boolean
 }
 
-class HistoryBackwardButton extends React.Component<{}, HistoryBackwardButtonProps> {
+class HistoryBackwardButton extends React.Component<HistoryBackwardButtonProps, HistoryBackwardButtonProps> {
   constructor(props: HistoryBackwardButtonProps) {
     super(props);
-    this.state = { disabled: false };
   }
   render(): React.ReactNode {
-    return <button id="backward" style={{ left: "228px", top: "500px", position: "absolute" }} disabled={this.state.disabled}>←一手戻る</button>
+    return <button id="backward" style={{ left: "228px", top: "500px", position: "absolute" }} disabled={this.props.disabled}>←一手戻る</button>
   }
 }
 
 interface BWCheckBoxProps {
   checked: boolean
+  onBWChange: (checked: boolean) => void
 }
 
-class BWCheckBox extends React.Component<{}, BWCheckBoxProps> {
-  constructor(props: HistoryBackwardButtonProps) {
+class BWCheckBox extends React.Component<BWCheckBoxProps, BWCheckBoxProps> {
+  constructor(props: BWCheckBoxProps) {
     super(props);
-    this.state = { checked: false };
+  }
+  handleBWChange(e: any) {
+    this.props.onBWChange(e.target.checked);
   }
   render(): React.ReactNode {
-    return <label style={{ top: "-30px", left: "720px", position: "absolute" }}><input type="checkbox" id="hanzi_black_white" checked={this.state.checked} /> 「黒」「白」で表示</label>
+    return <label style={{ top: "-30px", left: "720px", position: "absolute" }}>
+      <input
+        type="checkbox"
+        id="hanzi_black_white"
+        checked={this.props.checked}
+        onChange={this.handleBWChange}
+      /> 「黒」「白」で表示
+    </label>
   }
 }
 
@@ -173,7 +193,33 @@ function getContentHTMLFromEntity(entity: Entity): JSX.Element {
 class Game extends React.Component<{}, GameProps> {
   constructor(props: GameProps) {
     super(props);
-    this.state = props;
+    this.handleHistoryTextChange = this.handleHistoryTextChange.bind(this);
+    this.state = {
+      history: initial_history,
+      bw_checkbox_checked: false,
+      selected: null,
+      forward_button_disabled: false,
+      backward_button_disabled: true,
+      situation: get_initial_state("黒"),
+      previous_situation: null,
+    };
+  }
+
+  handleHistoryTextChange(history: string) {
+    this.setState({ history });
+  }
+
+  handleBWChange(bw_checkbox_checked: boolean) {
+    if (this.state.bw_checkbox_checked) {
+      this.setState({
+        history: this.state.history.replace(/[黒▲☗]/g, "黒").replace(/[白△☖]/g, "白")
+      });
+    } else {
+      this.setState({
+        history: this.state.history.replace(/[黒▲☗]/g, "▲").replace(/[白△☖]/g, "△")
+      });
+    }
+    this.setState({ bw_checkbox_checked });
   }
 
   load_history() {
@@ -374,16 +420,6 @@ class Game extends React.Component<{}, GameProps> {
 
 
   render() {
-    if (this.state.bw_checkbox_checked) {
-      this.setState({
-        history: this.state.history.replace(/[黒▲☗]/g, "黒").replace(/[白△☖]/g, "白")
-      });
-    } else {
-      this.setState({
-        history: this.state.history.replace(/[黒▲☗]/g, "▲").replace(/[白△☖]/g, "△")
-      });
-    }
-
     const board_content: JSX.Element[] = [];
     for (let row = 0; row < 9; row++) {
       for (let col = 0; col < 9; col++) {
@@ -401,7 +437,7 @@ class Game extends React.Component<{}, GameProps> {
         const is_selected = this.state.selected?.type === "piece_on_board" ? this.state.selected.coord[1] === row_ && this.state.selected.coord[0] === col_ : false;
         const piece_or_stone = <div
           className={`${entity.side === "白" ? "white" : "black"} ${is_newly_updated ? "newly" : ""} ${is_selected ? "selected" : ""}`}
-          style={{ top: `${50 + row * 50}px`, left: `${100 + col * 50}px;` }}
+          style={{ top: `${50 + row * 50}px`, left: `${100 + col * 50}px` }}
           onClick={entity.type === "碁" ? () => { } : () => this.select_piece_on_board([col_, row_])}
         >{
             getContentHTMLFromEntity(entity)
@@ -443,7 +479,7 @@ class Game extends React.Component<{}, GameProps> {
           if (can_move(this.state.situation.board, o) || is_castlable || is_kumalable) {
             const possible_destination = <div
               className="possible_destination"
-              style={{ top: `${50 + row * 50}px`, left: `${100 + col * 50}px;` }}
+              style={{ top: `${50 + row * 50}px`, left: `${100 + col * 50}px` }}
               onClick={() => { this.move_piece(to, entity_that_moves) }}
             ></div>;
             board_content.push(possible_destination);
@@ -548,11 +584,11 @@ class Game extends React.Component<{}, GameProps> {
       <div>
         <Background />
         <div id="board">{board_content}</div>
-        <History />
+        <History history={this.state.history} onHistoryTextChange={this.handleHistoryTextChange} />
         <button id="load_history" onClick={this.load_history} style={{ left: "660px", top: "520px", position: "absolute" }}>棋譜を読み込む</button>
-        <HistoryForwardButton />
-        <HistoryBackwardButton />
-        <BWCheckBox />
+        <HistoryForwardButton disabled={this.state.forward_button_disabled} />
+        <HistoryBackwardButton disabled={this.state.backward_button_disabled} />
+        <BWCheckBox checked={this.state.bw_checkbox_checked} onBWChange={this.handleBWChange} />
       </div>
     )
   }
