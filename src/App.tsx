@@ -157,6 +157,7 @@ interface BWCheckBoxProps {
 class BWCheckBox extends React.Component<BWCheckBoxProps, BWCheckBoxProps> {
   constructor(props: BWCheckBoxProps) {
     super(props);
+    this.handleBWChange = this.handleBWChange.bind(this);
   }
   handleBWChange(e: any) {
     this.props.onBWChange(e.target.checked);
@@ -223,7 +224,8 @@ class Game extends React.Component<{}, GameProps> {
   }
 
   handleBWChange(bw_checkbox_checked: boolean) {
-    if (this.state.bw_checkbox_checked) {
+    this.setState({ bw_checkbox_checked });
+    if (bw_checkbox_checked) {
       this.setState({
         history: this.state.history.replace(/[黒▲☗]/g, "黒").replace(/[白△☖]/g, "白")
       });
@@ -232,7 +234,6 @@ class Game extends React.Component<{}, GameProps> {
         history: this.state.history.replace(/[黒▲☗]/g, "▲").replace(/[白△☖]/g, "△")
       });
     }
-    this.setState({ bw_checkbox_checked });
   }
 
   load_history() {
