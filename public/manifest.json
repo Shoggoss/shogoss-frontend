@@ -1,25 +1,24 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "name": "しょ碁ス (ShoGoSs) 棋譜検証・解釈機",
+  "short_name": "しょ碁ス",
+  "description": "将棋＋囲碁＋チェスの異種格闘ゲーム",
   "icons": [
     {
-      "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "src": "icon_192.png",
+      "sizes": "192x192",
+      "type": "image/png"
     },
     {
-      "src": "logo192.png",
-      "type": "image/png",
-      "sizes": "192x192"
-    },
-    {
-      "src": "logo512.png",
-      "type": "image/png",
-      "sizes": "512x512"
+      "src": "icon_512.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ],
-  "start_url": ".",
-  "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "id": "/",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "portrait-primary",
+  "theme_color": "#222222",
+  "background_color": "#ffffff",
+  "lang": "ja-JP"
 }

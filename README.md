@@ -1,5 +1,7 @@
 # shogoss-frontend
 
+しょ碁ス (ShoGoSs) 棋譜検証・解釈機
+
 ## Website
 Located at https://shoggoss.github.io/shogoss-frontend/
 
